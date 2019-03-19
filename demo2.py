@@ -1,5 +1,7 @@
 import database
 
+database.session = database.DBSession()
+
 #database.createTables()
 
 print(database.Notes.getAll()[0].title)
@@ -14,3 +16,4 @@ for note in notesindefault:
     print(note.note)
     print()
 
+database.session.close()

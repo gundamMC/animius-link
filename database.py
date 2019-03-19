@@ -10,7 +10,7 @@ conn = "sqlite:///Animius_Link.db"
 engine = create_engine(conn)
 # create sessionmaker:
 DBSession = sessionmaker(bind=engine)
-session = DBSession()
+session = None
 
 def checkDatabase():
     try:
