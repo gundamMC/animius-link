@@ -1,7 +1,7 @@
-from WeatherModel import Weather
+from WeatherModel import ComWeather
 import WeatherModel
 
-city = Weather.search("shanghai")
+city = ComWeather.search("shanghai")
 w = city.getCurrent()  # type: WeatherModel._WeatherCurrent
 print(w.latestUpdateTime)
 print(w.pressure)

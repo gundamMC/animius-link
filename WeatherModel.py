@@ -20,7 +20,7 @@ def nodetextToDict(node):
 
 # TODO: unit conversion
 
-class _WeatherCurrent(object):
+class _ComWeatherCurrent(object):
     def __init__(self):
         self._latestUpdateTime = ""
         self._location = ""
@@ -107,7 +107,7 @@ class _WeatherCurrent(object):
         return self._weather_desc
 
 
-class _WeatherDay(object):
+class _ComWeatherDay(object):
     def __init__(self):
         self._latestUpdateTime = ""
         self._date = ""
@@ -221,7 +221,7 @@ class _WeatherDay(object):
         return "%s%%" % (self._night_precipitation_chance)
 
 
-class Weather(object):
+class ComWeather(object):
     searchApi = "http://wxdata.weather.com/wxdata/search/search?where=%s&locale=%s"
 
     def __init__(self, city_id, location, lang):
@@ -245,7 +245,7 @@ class Weather(object):
         tree = ET.XML(data)  # type: ET.Element
         for cNode in list(tree):
             if cNode.tag == "cc":
-                return _WeatherCurrent.initFromXML(cNode)
+                return _ComWeatherCurrent.initFromXML(cNode)
 
     def getDays(self, dayf=1):
         api = self.weatherApi + "&dayf=%s" % dayf
@@ -253,4 +253,86 @@ class Weather(object):
         tree = ET.XML(data)  # type: ET.Element
         for cNode in list(tree):
             if cNode.tag == "dayf":
-                return _WeatherDay.initFromXML(cNode)
+                return _ComWeatherDay.initFromXML(cNode)
+
+
+class WeatherCurrent:
+    def __init__(self, json_node, minutely, intensity_threshold=0.05, prob_threshold=0.30):
+        self.summary = json_node['summary']
+        self.icon = json_node['fog']
+
+        self.temperature = json_node['temperature']
+        self.apparentTemperature = json_node['apparentTemperature']
+        self.dewPoint = json_node['dewPoint']
+        self.humidity = json_node['humidity']
+        self.windSpeed = json_node['windSpeed']
+        self.windBearing = json_node['windBearing']
+        self.uvIndex = json_node['uvIndex']
+        self.visibility = json_node['visibility']
+
+        self.next_precip_change_time = None
+        self.next_precip_change_intensity = None
+        self.next_precip_change_prob = None
+
+        # process minutely
+        data = minutely['data']
+        intensity = data[0]['precipIntensity']
+
+        for minute in data:
+            if abs(intensity - minute['precipIntensity']) > intensity_threshold and \
+                minute['precipProbability'] > prob_threshold:
+                self.next_precip_change_time = minute['time']
+                self.next_precip_change_intensity = minute['precipIntensity']
+                self.next_precip_change_prob = minute['precipProbability']
+
+
+class WeatherDay:
+    def __init__(self, day_node):
+        self.temperatureMin = day_node['apparentTemperatureMin']
+        self.apparentTemperatureMin = day_node['temperatureMin']
+        self.temperatureMax = day_node['temperatureMax']
+        self.apparentTemperatureMax = day_node['apparentTemperatureMax']
+        self.dewPoint = day_node['dewPoint']
+        self.humidity = day_node['humidity']
+        self.windSpeed = day_node['windSpeed']
+        self.windBearing = day_node['windBearing']
+        self.precipIntensity = day_node['precipIntensity']
+        self.precipProbability = day_node['precipProbability']
+        self.precipType = day_node['precipType']
+        self.uvIndex = day_node['uvIndex']
+        self.visibility = day_node['visibility']
+        self.sunriseTime = day_node['sunriseTime']
+        self.sundownTime = day_node['sunsetTime']
+        self.moonPhase = day_node['moonPhase']
+
+
+class WeatherHour:
+    def __init__(self, hourly_node):
+        self.temperature = hourly_node['temperature']
+        self.apparentTemperature = hourly_node['apparentTemperature']
+        self.precipIntensity = hourly_node['precipIntensity']
+        self.precipProbability = hourly_node['precipProbability']
+        self.humidity = hourly_node['humidity']
+        self.uvIndex = hourly_node['uvIndex']
+        self.visibility = hourly_node['visibility']
+        self.windSpeed = hourly_node['windSpeed']
+
+
+class Weather:
+    def __init__(self, response):
+        self.timezone = response['timezone']
+        self.latitude = response['latitude']
+        self.longitude = response['longitude']
+
+        self.current = WeatherCurrent(response['current'], response['minutely'])
+
+        self.minute_summary = response['minutely']['summary']
+        self.minute_icon = response['minutely']['icon']
+
+        self.hourly_summary = response['hourly']['summary']
+        self.hourly_icon = response['hourly']['icon']
+        self.hourly = [WeatherHour(x) for x in response['hourly']['data']]
+
+        self.daily_summary = response['daily']['summary']
+        self.daily_icon = response['daily']['icon']
+        self.daily = [WeatherDay(x) for x in response['daily']['data']]
