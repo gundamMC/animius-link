@@ -117,6 +117,14 @@ class Notes(Base):
         session.commit()
         return note0
 
+    def dumpToDict(self):
+        d  = {}
+        d["id"] = self.id
+        d["title"] = self.title
+        d["note"] = self.note
+        d["createtime"] = self.time
+        d["category_name"] = self.category.name
+        return d
 
 
 class NotesCategory(Base):
@@ -141,6 +149,13 @@ class NotesCategory(Base):
         session.add(cate)
         session.commit()
         return cate
+
+    def dumpToDict(self):
+        d = {}
+        d["id"] = self.id
+        d["name"]  = self.name
+        d["notes_num"] = self.notes.count()
+        return d
 
 
 
@@ -192,6 +207,17 @@ class Reminders(Base):
         session.commit()
         return True
 
+    def dumpToDict(self):
+        d = {}
+        d["id"] = self.id
+        d["content"] = self.content
+        d["detail"] = self.detail
+        d["createtime"] = self.time
+        d["deadline"] = self.deadline
+        d["status"] = self.status
+        d["category_name"] = self.category.name
+        return d
+
 
 
 class RemindersCategory(Base):
@@ -222,3 +248,9 @@ class RemindersCategory(Base):
         session.add(cate)
         session.commit()
         return cate
+
+    def dumpToDict(self):
+        d = {}
+        d["id"] = self.id
+        d["name"] = self.name
+        return d

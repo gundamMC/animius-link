@@ -15,6 +15,7 @@ print(user.id,user.name)
 # database.Notes.add(user,"ceshil","23131312ll",database.NotesCategory.getByName(user,"life"))
 # database.Notes.add(user,"ceshi1l","23131312lll",database.NotesCategory.getByName(user,"life"))
 # database.Notes.add(user,"ceshi2l","23131312llll",database.NotesCategory.getByName(user,"life"))
+#print(database.Notes.getByCategory(user,database.NotesCategory.getByName(user,"default")))
 print("totalnotes",user.notes.count())
 for note in user.notes:
     print("-" * 3)
@@ -26,6 +27,7 @@ for note in user.notes:
 
 print("total categoty",user.notes_category.count())
 for cate in user.notes_category:
+    print(cate.dumpToDict())
     print("*"*3)
     print("category name",cate.name)
     print("total notes",cate.notes.count())
