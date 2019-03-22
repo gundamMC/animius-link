@@ -1,9 +1,9 @@
-import database
+from Modules import database as db
 
-database.session = database.DBSession()
+db.initSession()
 
 #database.createTables()
-user = database.Users.getByName("admin")
+user = db.Users.getByName("admin")
 print(user.id,user.name)
 #cate = database.NotesCategory.add(user,"default")
 #cate = database.NotesCategory.add(user,"life")
@@ -38,5 +38,6 @@ for cate in user.notes_category:
         print("cate", note.category.name)
         print(note.note)
     print("8"*3)
-database.session.close()
+
+db.closeSession()
 

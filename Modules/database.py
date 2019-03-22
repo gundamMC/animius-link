@@ -1,16 +1,25 @@
 from sqlalchemy import Column, String, Integer, Boolean, create_engine, ForeignKey, Text
-from sqlalchemy.orm import sessionmaker, relationship,session as s
+from sqlalchemy.orm import sessionmaker, relationship,session as s,scoped_session
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import ProgrammingError
+from contextlib import contextmanager
 import time,sqlalchemy
+
+
+"""
+how to use (temporary)
+from Modules import database as db
+db.initSession()
+// Do something with db
+u = db.User.getByNamea("admin")
+db.closeSession()
+"""
+
 
 Base = declarative_base()
 conn = "sqlite:///Animius_Link.db"
-# init connection
-engine = create_engine(conn)
-# create sessionmaker:
-DBSession = sessionmaker(bind=engine)
-session = None # type:s.Session
+DBSession = None
+session = None
 
 def checkDatabase():
     try:
@@ -24,13 +33,16 @@ def checkDatabase():
         return (False,err.code,err.orig)
 
 def initSession():
-    # init connection
+    global DBSession,session
     engine = create_engine(conn)
-    # create sessionmaker:
-    DBSession = sessionmaker(bind=engine)
+    DBSession = scoped_session(sessionmaker(bind=engine))
+    session = DBSession()
+    return
 
-    return DBSession, engine
-
+def closeSession():
+    global DBSession,session
+    session.close()
+    DBSession.remove()
 
 def createTables():
     try:

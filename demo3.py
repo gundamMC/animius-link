@@ -1,16 +1,18 @@
-from database import Reminders,RemindersCategory
-import database,time
-#database.createTables()
-database.session = database.DBSession()
-user = database.Users.getByName("admin")
-cate = RemindersCategory.getByName(user,"default")
+from Modules import database as db
+import time
+
+db.initSession()
+
+user = db.Users.getByName("admin")
+cate = db.RemindersCategory.getByName(user,"default")
 print(cate.name)
 print(cate.dumpToDict())
 # a = Reminders.add(user,"play game","",int(time.time())+5000,cate)
 # a.finish()
-for r in Reminders.getAll(user):
+for r in db.Reminders.getAll(user):
     print(r.content)
     print(r.dumpToDict())
-for r in Reminders.getAll(user,finish=True):
+for r in db.Reminders.getAll(user,finish=True):
     print(r.content)
-database.session.close()
+
+db.closeSession()
