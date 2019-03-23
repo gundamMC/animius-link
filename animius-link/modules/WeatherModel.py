@@ -18,248 +18,132 @@ def nodetextToDict(node):
     return d
 
 
-# TODO: unit conversion
-
-class _ComWeatherCurrent(object):
+class Weather:
     def __init__(self):
-        self._latestUpdateTime = ""
-        self._location = ""
-        self._tmp = "0"  # F
-        self._tmp_FeelLike = "0"  # F
-        self._weather_desc = ""
-        self._uv_index = "0"  # out of 10
-        self._uv_desc = ""
-        self._humidity = "0"  # percent
-        self._visibility = "0"  # meter
-        self._wind_direction_text = ""
-        self._wind_direction = "0"
-        self._wind_speed = "0"  # mph
-        self._pressure = "0"  # in
-        self._dew_point = "0"  # F
+        self.current = None
 
-        self._unit_speed = "mph"
-        self._unit_distance = "mile"
-        self._unit_tmp = "F"
-        self._unit_pressure = "in"
+        self.minute_summary = None
+        self.minute_icon = None
 
-    @classmethod
-    def initFromXML(cls, node):
-        w = cls()
-        node = nodetextToDict(node)
-        w._latestUpdateTime = node["lsup"][0][1]
-        w._location = node["obst"][0][1]
-        w._tmp = node["tmp"][0][1]
-        w._tmp_FeelLike = node["flik"][0][1]
-        w._weather_desc = node["t"][0][1]
-        w._dew_point = node["dewp"][0][1]
-        w._humidity = node["hmid"][0][1]
-        w._visibility = node["vis"][0][1]
-        w._pressure = node["bar"][0][1]["r"][0][1]
-        w._wind_speed = node["wind"][0][1]["s"][0][1]
-        w._wind_direction_text = node["wind"][0][1]["t"][0][1]
-        w._wind_direction = node["wind"][0][1]["d"][0][1]
-        w._uv_desc = node["uv"][0][1]["t"][0][1]
-        w._uv_index = node["uv"][0][1]["i"][0][1]
-        return w
+        self.hourly_summary = None
+        self.hourly_icon = None
+        self.hourly = None
 
-    @property
-    def wind(self):
-        return "%s %s %s " % (self._wind_direction_text, self._wind_speed, self._unit_speed)
+        self.daily_summary = None
+        self.daily_icon = None
+        self.daily = None
 
-    @property
-    def humidity(self):
-        return "%s%%" % (self._humidity)
+    def init_dark_sky(self, response):
 
-    @property
-    def temperature(self):
-        return "%s %s" % (self._tmp, self._unit_tmp)
+        self.current = WeatherCurrent()
+        self.current.init_dark_sky(response['currently'], response['minutely'])
 
-    @property
-    def temperatureFL(self):
-        return self._tmp_FeelLike + self._unit_tmp
+        self.minute_summary = response['minutely']['summary']
+        self.minute_icon = response['minutely']['icon']
 
-    @property
-    def uv(self):
-        return "%s/10 (%s)" % (self._uv_index, self._uv_desc)
+        self.hourly_summary = response['hourly']['summary']
+        self.hourly_icon = response['hourly']['icon']
+        self.hourly = [WeatherHour().init_dark_sky(x) for x in response['hourly']['data']]
 
-    @property
-    def pressure(self):
-        return "%s %s" % (self._pressure, self._unit_pressure)
+        self.daily_summary = response['daily']['summary']
+        self.daily_icon = response['daily']['icon']
+        self.daily = [WeatherDay().init_dark_sky(x) for x in response['daily']['data']]
 
-    @property
-    def visibility(self):
-        return "%s %s" % (self._visibility, self._unit_distance)
+        return self
 
-    @property
-    def dew_point(self):
-        return "%s %s" % (self._dew_point, self._unit_tmp)
+    def init_weather_com(self, response):
+        tree = ET.XML(response)  # type: ET.Element
 
-    @property
-    def location(self):
-        return self._location
+        self.current = WeatherCurrent()
+        self.current.init_weather_com(tree.find('cc'))
 
-    @property
-    def latestUpdateTime(self):
-        return self._latestUpdateTime
+        daily_node = nodetextToDict(tree.find('dayf'))
+        self.daily = []
+        for day in daily_node["day"]:
+            weather_day = WeatherDay()
+            weather_day.init_weather_com(day)
+            self.daily.append(weather_day)
 
-    @property
-    def weather(self):
-        return self._weather_desc
+        return self
 
 
-class _ComWeatherDay(object):
+class Location:
+
+    weather_com_api = "http://wxdata.weather.com/wxdata/weather/local/%s?unit=%s&locale=%s&cc&dayf=%s"
+    weather_com_search = "http://wxdata.weather.com/wxdata/search/search?where=%s&locale=%s"
+    dark_sky_api = "https://api.darksky.net/forecast/%s/%s,%s?units=%s&lang=%s"
+
     def __init__(self):
-        self._latestUpdateTime = ""
-        self._date = ""
-        self._day = ""
-        self._tmp_highest = "0"
-        self._tmp_lowest = "0"
-        self._sunrise = ""
-        self._sunset = ""
+        self.com_id = None
+        self.latitude = None
+        self.longitude = None
 
-        self._day_weather_desc = ""
-        self._day_wind_speed = "0"
-        self._day_wind_direction = "0"
-        self._day_wind_direction_text = ""
-        self._day_humidity = "0"
-        self._day_precipitation_chance = "0"
+        self.locale = "en"  # TODO: Make locale automatically change between dark sky and weather.com
+        self.si_units = False
 
-        self._night_weather_desc = ""
-        self._night_wind_speed = "0"
-        self._night_wind_direction_text = ""
-        self._night_wind_direction = "0"
-        self._night_humidity = "0"
-        self._night_precipitation_chance = "0"
+        self.dark_sky_key = None
 
-        self._unit_speed = "mph"
-        self._unit_distance = "mile"
-        self._unit_tmp = "F"
-        self._unit_pressure = "in"
-
-    @classmethod
-    def initFromXML(cls, node):
-        node = nodetextToDict(node)
-        weathers = []
-        for day in node["day"]:
-            w = cls()
-            w._latestUpdateTime = node["lsup"][0][1]
-            w._date = day[0]["dt"]
-            w._day = day[0]["t"]
-            w._tmp_highest = day[1]["hi"][0][1]
-            w._tmp_lowest = day[1]["low"][0][1]
-            w._sunrise = day[1]["sunr"][0][1]
-            w._sunset = day[1]["suns"][0][1]
-
-            w._day_weather_desc = day[1]["part"][0][1]["t"][0][1]
-            w._day_wind_speed = day[1]["part"][0][1]["wind"][0][1]["s"][0][1]
-            w._day_wind_direction = day[1]["part"][0][1]["wind"][0][1]["d"][0][1]
-            w._day_wind_direction_text = day[1]["part"][0][1]["wind"][0][1]["t"][0][1]
-            w._day_humidity = day[1]["part"][0][1]["hmid"][0][1]
-            w._day_precipitation_chance = day[1]["part"][0][1]["ppcp"][0][1]
-
-            w._night_weather_desc = day[1]["part"][1][1]["t"][0][1]
-            w._night_wind_speed = day[1]["part"][1][1]["wind"][0][1]["s"][0][1]
-            w._night_wind_direction = day[1]["part"][1][1]["wind"][0][1]["d"][0][1]
-            w._night_wind_direction_text = day[1]["part"][1][1]["wind"][0][1]["t"][0][1]
-            w._night_humidity = day[1]["part"][1][1]["hmid"][0][1]
-            w._night_precipitation_chance = day[1]["part"][1][1]["ppcp"][0][1]
-            weathers.append(w)
-
-        return weathers
-
-    @property
-    def latestUpdateTime(self):
-        return self._latestUpdateTime
-
-    @property
-    def date(self):
-        return "%s, %s" % (self._day, self._date)
-
-    @property
-    def temperature(self):
-        return "%s/%s %s" % ("--" if self._tmp_lowest is None else self._tmp_lowest,
-                                "--" if self._tmp_highest is None else self._tmp_highest,self._unit_tmp)
-
-    @property
-    def sunrise(self):
-        return self._sunrise
-
-    @property
-    def sunset(self):
-        return self._sunset
-
-    @property
-    def dayWeather(self):
-        return self._day_weather_desc
-
-    @property
-    def dayWind(self):
-        return "%s %s %s " % (self._day_wind_direction_text, self._day_wind_speed, self._unit_speed)
-
-    @property
-    def dayHumidity(self):
-        return "%s%%" % (self._day_humidity)
-
-    @property
-    def dayPerciChance(self):
-        return "%s%%" % (self._day_precipitation_chance)
-
-    @property
-    def nightWeather(self):
-        return self._night_weather_desc
-
-    @property
-    def nightWind(self):
-        return "%s %s %s " % (self._night_wind_direction_text, self._night_wind_speed, self._unit_speed)
-
-    @property
-    def nightHumidity(self):
-        return "%s%%" % (self._night_humidity)
-
-    @property
-    def nightPerciChance(self):
-        return "%s%%" % (self._night_precipitation_chance)
-
-
-class ComWeather(object):
-    searchApi = "http://wxdata.weather.com/wxdata/search/search?where=%s&locale=%s"
-
-    def __init__(self, city_id, location, lang):
-        self.city_id = city_id
-        self.location = location
-        self.lang = lang
-        self.weatherApi = "http://wxdata.weather.com/wxdata/weather/local/%s?locale=%s" % (city_id, lang)
-
-    @classmethod
-    def search(cls, keyword, lang="en_US"):
-        data = requests.get(cls.searchApi % (keyword, lang)).text
+    def search(self, keyword):
+        data = requests.get(Location.weather_com_search % (keyword, self.locale)).text
         tree = ET.XML(data)  # type: ET.Element
         if len(tree) == 0:
             return None
+
+        results = {}
+
         for cNode in list(tree):  # type: ET.Element
-            return cls(cNode.get("id"), cNode.text, lang)
+            results[cNode.text] = cNode.get("id")
 
-    def getCurrent(self):
-        api = self.weatherApi + "&cc"
-        data = requests.get(api).text
-        tree = ET.XML(data)  # type: ET.Element
-        for cNode in list(tree):
-            if cNode.tag == "cc":
-                return _ComWeatherCurrent.initFromXML(cNode)
+        return results
 
-    def getDays(self, dayf=1):
-        api = self.weatherApi + "&dayf=%s" % dayf
-        data = requests.get(api).text
-        tree = ET.XML(data)  # type: ET.Element
-        for cNode in list(tree):
-            if cNode.tag == "dayf":
-                return _ComWeatherDay.initFromXML(cNode)
+    def select(self, com_id):
+        self.com_id = com_id
+
+    def get_weather_com(self, weather):
+        response = requests.get(Location.weather_com_api % (self.com_id, 'm' if self.si_units else 'f', self.locale, 8)).text
+        weather.init_weather_com(response)
+
+    def get_dark_sky(self, weather):
+
+        if self.latitude is None or self.longitude is None:
+            # find latitude and longitude using weather.com's api.
+            weather_com_response = requests.get(Location.weather_com_api % (self.com_id, 'm' if self.si_units else 'f', self.locale, 8)).text
+            tree = ET.XML(weather_com_response)  # type: ET.Element
+            loc = tree.find('loc')
+            self.com_id = loc.get('id')
+            self.longitude = loc.find('lon').text
+            self.latitude = loc.find('lat').text
+
+        response = requests.get(Location.dark_sky_api % (self.dark_sky_key,
+                                                         self.latitude,
+                                                         self.longitude,
+                                                         ('si' if self.si_units else 'us'),
+                                                         self.locale)).json()
+        weather.init_dark_sky(response)
 
 
 class WeatherCurrent:
-    def __init__(self, json_node, minutely, intensity_threshold=0.05, prob_threshold=0.30):
+
+    def __init__(self):
+        self.summary = None
+        self.icon = None
+
+        self.temperature = None
+        self.apparentTemperature = None
+        self.dewPoint = None
+        self.humidity = None
+        self.windSpeed = None
+        self.windBearing = None
+        self.uvIndex = None
+        self.visibility = None
+
+        self.next_precip_change_time = None
+        self.next_precip_change_intensity = None
+        self.next_precip_change_prob = None
+
+    def init_dark_sky(self, json_node, minutely, intensity_threshold=0.05, prob_threshold=0.30):
         self.summary = json_node['summary']
-        self.icon = json_node['fog']
+        self.icon = json_node['icon']
 
         self.temperature = json_node['temperature']
         self.apparentTemperature = json_node['apparentTemperature']
@@ -280,14 +164,52 @@ class WeatherCurrent:
 
         for minute in data:
             if abs(intensity - minute['precipIntensity']) > intensity_threshold and \
-                minute['precipProbability'] > prob_threshold:
+                    minute['precipProbability'] > prob_threshold:
                 self.next_precip_change_time = minute['time']
                 self.next_precip_change_intensity = minute['precipIntensity']
                 self.next_precip_change_prob = minute['precipProbability']
 
+        return self
+
+    def init_weather_com(self, xml_node):
+        node = nodetextToDict(xml_node)
+        self.temperature = node["tmp"][0][1]
+        self.apparentTemperature = node["flik"][0][1]
+        self.summary = node["t"][0][1]
+        self.icon = self.summary
+        self.dewPoint = node["dewp"][0][1]
+        self.humidity = node["hmid"][0][1]
+        self.visibility = node["vis"][0][1]
+        self.windSpeed = node["wind"][0][1]["s"][0][1]
+        self.windBearing = node["wind"][0][1]["d"][0][1]
+        self.uvIndex = node["uv"][0][1]["i"][0][1]
+
+        # no minutely data for weather.com
+
+        return self
+
 
 class WeatherDay:
-    def __init__(self, day_node):
+
+    def __init__(self):
+        self.temperatureMin = None
+        self.apparentTemperatureMin = None
+        self.temperatureMax = None
+        self.apparentTemperatureMax = None
+        self.dewPoint = None
+        self.humidity = None
+        self.windSpeed = None
+        self.windBearing = None
+        self.precipIntensity = None
+        self.precipProbability = None
+        self.precipType = None
+        self.uvIndex = None
+        self.visibility = None
+        self.sunriseTime = None
+        self.sundownTime = None
+        self.moonPhase = None
+
+    def init_dark_sky(self, day_node):
         self.temperatureMin = day_node['apparentTemperatureMin']
         self.apparentTemperatureMin = day_node['temperatureMin']
         self.temperatureMax = day_node['temperatureMax']
@@ -305,9 +227,36 @@ class WeatherDay:
         self.sundownTime = day_node['sunsetTime']
         self.moonPhase = day_node['moonPhase']
 
+        return self
+
+    def init_weather_com(self, day):
+
+        self.temperatureMax = day[1]["hi"][0][1]
+        self.temperatureMin = day[1]["low"][0][1]
+        self.sunriseTime = day[1]["sunr"][0][1]
+        self.sundownTime = day[1]["suns"][0][1]
+
+        self.windSpeed = day[1]["part"][0][1]["wind"][0][1]["s"][0][1]
+        self.windBearing = day[1]["part"][0][1]["wind"][0][1]["d"][0][1]
+        self.humidity = day[1]["part"][0][1]["hmid"][0][1]
+        self.precipProbability = day[1]["part"][0][1]["ppcp"][0][1]
+
+        return self
+
 
 class WeatherHour:
-    def __init__(self, hourly_node):
+
+    def __init__(self):
+        self.temperature = None
+        self.apparentTemperature = None
+        self.precipIntensity = None
+        self.precipProbability = None
+        self.humidity = None
+        self.uvIndex = None
+        self.visibility = None
+        self.windSpeed = None
+
+    def init_dark_sky(self, hourly_node):
         self.temperature = hourly_node['temperature']
         self.apparentTemperature = hourly_node['apparentTemperature']
         self.precipIntensity = hourly_node['precipIntensity']
@@ -317,22 +266,18 @@ class WeatherHour:
         self.visibility = hourly_node['visibility']
         self.windSpeed = hourly_node['windSpeed']
 
+        return self
 
-class Weather:
-    def __init__(self, response):
-        self.timezone = response['timezone']
-        self.latitude = response['latitude']
-        self.longitude = response['longitude']
 
-        self.current = WeatherCurrent(response['current'], response['minutely'])
+test_loc = Location()
+print(test_loc.search('San fran'))
 
-        self.minute_summary = response['minutely']['summary']
-        self.minute_icon = response['minutely']['icon']
+test_loc.select('USCA0987')
 
-        self.hourly_summary = response['hourly']['summary']
-        self.hourly_icon = response['hourly']['icon']
-        self.hourly = [WeatherHour(x) for x in response['hourly']['data']]
+test_weather = Weather()
 
-        self.daily_summary = response['daily']['summary']
-        self.daily_icon = response['daily']['icon']
-        self.daily = [WeatherDay(x) for x in response['daily']['data']]
+test_loc.dark_sky_key = "enter key here"
+
+test_loc.get_dark_sky(test_weather)
+
+print('end')
