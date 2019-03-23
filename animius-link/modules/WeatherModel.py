@@ -267,17 +267,3 @@ class WeatherHour:
         self.windSpeed = hourly_node['windSpeed']
 
         return self
-
-
-test_loc = Location()
-print(test_loc.search('San fran'))
-
-test_loc.select('USCA0987')
-
-test_weather = Weather()
-
-test_loc.dark_sky_key = "enter key here"
-
-test_loc.get_dark_sky(test_weather)
-
-print('end')
