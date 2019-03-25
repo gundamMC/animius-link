@@ -1,9 +1,4 @@
-from . import WeatherModel
-
-
-location = WeatherModel.Location()
-weather = WeatherModel.Weather()
-
+from WeatherModel import Location,Weather
 
 def weather_look_up(name_entity_data, user_id):
     # parse NER data to get exact query

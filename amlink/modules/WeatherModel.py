@@ -32,39 +32,35 @@ class Weather:
         self.daily_summary = None
         self.daily_icon = None
         self.daily = None
+        
+    @classmethod
+    def init_dark_sky(cls, response):
+        w = cls()
+        w.current = WeatherCurrent.init_dark_sky(response['currently'], response['minutely'])
 
-    def init_dark_sky(self, response):
+        w.minute_summary = response['minutely']['summary']
+        w.minute_icon = response['minutely']['icon']
 
-        self.current = WeatherCurrent()
-        self.current.init_dark_sky(response['currently'], response['minutely'])
+        w.hourly_summary = response['hourly']['summary']
+        w.hourly_icon = response['hourly']['icon']
+        w.hourly = [WeatherHour.init_dark_sky(x) for x in response['hourly']['data']]
 
-        self.minute_summary = response['minutely']['summary']
-        self.minute_icon = response['minutely']['icon']
+        w.daily_summary = response['daily']['summary']
+        w.daily_icon = response['daily']['icon']
+        w.daily = [WeatherDay.init_dark_sky(x) for x in response['daily']['data']]
 
-        self.hourly_summary = response['hourly']['summary']
-        self.hourly_icon = response['hourly']['icon']
-        self.hourly = [WeatherHour().init_dark_sky(x) for x in response['hourly']['data']]
+        return w
 
-        self.daily_summary = response['daily']['summary']
-        self.daily_icon = response['daily']['icon']
-        self.daily = [WeatherDay().init_dark_sky(x) for x in response['daily']['data']]
-
-        return self
-
-    def init_weather_com(self, response):
+    @classmethod
+    def init_weather_com(cls, response):
+        w = cls()
         tree = ET.XML(response)  # type: ET.Element
 
-        self.current = WeatherCurrent()
-        self.current.init_weather_com(tree.find('cc'))
+        w.current = WeatherCurrent.init_weather_com(tree.find('cc'))
 
         daily_node = nodetextToDict(tree.find('dayf'))
-        self.daily = []
-        for day in daily_node["day"]:
-            weather_day = WeatherDay()
-            weather_day.init_weather_com(day)
-            self.daily.append(weather_day)
-
-        return self
+        w.daily = [WeatherDay.init_weather_com(day) for day in daily_node["day"]]
+        return w
 
 
 class Location:
@@ -83,8 +79,9 @@ class Location:
 
         self.dark_sky_key = None
 
-    def search(self, keyword):
-        data = requests.get(Location.weather_com_search % (keyword, self.locale)).text
+    @classmethod
+    def search(cls, keyword):
+        data = requests.get(cls.weather_com_search % (keyword, cls().locale)).text
         tree = ET.XML(data)  # type: ET.Element
         if len(tree) == 0:
             return None
@@ -96,30 +93,32 @@ class Location:
 
         return results
 
-    def select(self, com_id):
-        self.com_id = com_id
+    @classmethod
+    def select(cls, com_id):
+        l = cls()
+        l.com_id = com_id
+        response = requests.get(Location.weather_com_api % (l.com_id, l.unit, l.locale, 8)).text
+        tree = ET.XML(response)
+        loc = tree.find('loc')
+        l.longitude = loc.find('lon').text
+        l.latitude = loc.find('lat').text
+        return l
 
-    def get_weather_com(self, weather):
-        response = requests.get(Location.weather_com_api % (self.com_id, 'm' if self.si_units else 'f', self.locale, 8)).text
-        weather.init_weather_com(response)
+    def get_weather_com(self):
+        response = requests.get(Location.weather_com_api % (self.com_id, self.unit, self.locale, 8)).text
+        return Weather.init_weather_com(response)
 
-    def get_dark_sky(self, weather):
-
-        if self.latitude is None or self.longitude is None:
-            # find latitude and longitude using weather.com's api.
-            weather_com_response = requests.get(Location.weather_com_api % (self.com_id, 'm' if self.si_units else 'f', self.locale, 8)).text
-            tree = ET.XML(weather_com_response)  # type: ET.Element
-            loc = tree.find('loc')
-            self.com_id = loc.get('id')
-            self.longitude = loc.find('lon').text
-            self.latitude = loc.find('lat').text
-
+    def get_dark_sky(self):
         response = requests.get(Location.dark_sky_api % (self.dark_sky_key,
                                                          self.latitude,
                                                          self.longitude,
-                                                         ('si' if self.si_units else 'us'),
+                                                         self.unit,
                                                          self.locale)).json()
-        weather.init_dark_sky(response)
+        return Weather.init_dark_sky(response)
+
+    @property
+    def unit(self):
+        return 'm' if self.si_units else 'f'
 
 
 class WeatherCurrent:
@@ -140,23 +139,25 @@ class WeatherCurrent:
         self.next_precip_change_time = None
         self.next_precip_change_intensity = None
         self.next_precip_change_prob = None
+        
+    @classmethod
+    def init_dark_sky(cls, json_node, minutely, intensity_threshold=0.05, prob_threshold=0.30):
+        wc = cls()
+        wc.summary = json_node['summary']
+        wc.icon = json_node['icon']
 
-    def init_dark_sky(self, json_node, minutely, intensity_threshold=0.05, prob_threshold=0.30):
-        self.summary = json_node['summary']
-        self.icon = json_node['icon']
+        wc.temperature = json_node['temperature']
+        wc.apparentTemperature = json_node['apparentTemperature']
+        wc.dewPoint = json_node['dewPoint']
+        wc.humidity = json_node['humidity']
+        wc.windSpeed = json_node['windSpeed']
+        wc.windBearing = json_node['windBearing']
+        wc.uvIndex = json_node['uvIndex']
+        wc.visibility = json_node['visibility']
 
-        self.temperature = json_node['temperature']
-        self.apparentTemperature = json_node['apparentTemperature']
-        self.dewPoint = json_node['dewPoint']
-        self.humidity = json_node['humidity']
-        self.windSpeed = json_node['windSpeed']
-        self.windBearing = json_node['windBearing']
-        self.uvIndex = json_node['uvIndex']
-        self.visibility = json_node['visibility']
-
-        self.next_precip_change_time = None
-        self.next_precip_change_intensity = None
-        self.next_precip_change_prob = None
+        wc.next_precip_change_time = None
+        wc.next_precip_change_intensity = None
+        wc.next_precip_change_prob = None
 
         # process minutely
         data = minutely['data']
@@ -165,28 +166,30 @@ class WeatherCurrent:
         for minute in data:
             if abs(intensity - minute['precipIntensity']) > intensity_threshold and \
                     minute['precipProbability'] > prob_threshold:
-                self.next_precip_change_time = minute['time']
-                self.next_precip_change_intensity = minute['precipIntensity']
-                self.next_precip_change_prob = minute['precipProbability']
+                wc.next_precip_change_time = minute['time']
+                wc.next_precip_change_intensity = minute['precipIntensity']
+                wc.next_precip_change_prob = minute['precipProbability']
 
-        return self
-
-    def init_weather_com(self, xml_node):
+        return wc
+    
+    @classmethod
+    def init_weather_com(cls, xml_node):
+        wc = cls()
         node = nodetextToDict(xml_node)
-        self.temperature = node["tmp"][0][1]
-        self.apparentTemperature = node["flik"][0][1]
-        self.summary = node["t"][0][1]
-        self.icon = self.summary
-        self.dewPoint = node["dewp"][0][1]
-        self.humidity = node["hmid"][0][1]
-        self.visibility = node["vis"][0][1]
-        self.windSpeed = node["wind"][0][1]["s"][0][1]
-        self.windBearing = node["wind"][0][1]["d"][0][1]
-        self.uvIndex = node["uv"][0][1]["i"][0][1]
+        wc.temperature = node["tmp"][0][1]
+        wc.apparentTemperature = node["flik"][0][1]
+        wc.summary = node["t"][0][1]
+        wc.icon = wc.summary
+        wc.dewPoint = node["dewp"][0][1]
+        wc.humidity = node["hmid"][0][1]
+        wc.visibility = node["vis"][0][1]
+        wc.windSpeed = node["wind"][0][1]["s"][0][1]
+        wc.windBearing = node["wind"][0][1]["d"][0][1]
+        wc.uvIndex = node["uv"][0][1]["i"][0][1]
 
         # no minutely data for weather.com
 
-        return self
+        return wc
 
 
 class WeatherDay:
@@ -209,40 +212,41 @@ class WeatherDay:
         self.sundownTime = None
         self.moonPhase = None
 
-    def init_dark_sky(self, day_node):
-        self.temperatureMin = day_node['apparentTemperatureMin']
-        self.apparentTemperatureMin = day_node['temperatureMin']
-        self.temperatureMax = day_node['temperatureMax']
-        self.apparentTemperatureMax = day_node['apparentTemperatureMax']
-        self.dewPoint = day_node['dewPoint']
-        self.humidity = day_node['humidity']
-        self.windSpeed = day_node['windSpeed']
-        self.windBearing = day_node['windBearing']
-        self.precipIntensity = day_node['precipIntensity']
-        self.precipProbability = day_node['precipProbability']
-        self.precipType = day_node['precipType']
-        self.uvIndex = day_node['uvIndex']
-        self.visibility = day_node['visibility']
-        self.sunriseTime = day_node['sunriseTime']
-        self.sundownTime = day_node['sunsetTime']
-        self.moonPhase = day_node['moonPhase']
+    @classmethod
+    def init_dark_sky(cls, day_node):
+        wd = cls()
+        wd.temperatureMin = day_node['apparentTemperatureMin']
+        wd.apparentTemperatureMin = day_node['temperatureMin']
+        wd.temperatureMax = day_node['temperatureMax']
+        wd.apparentTemperatureMax = day_node['apparentTemperatureMax']
+        wd.dewPoint = day_node['dewPoint']
+        wd.humidity = day_node['humidity']
+        wd.windSpeed = day_node['windSpeed']
+        wd.windBearing = day_node['windBearing']
+        wd.precipIntensity = day_node['precipIntensity']
+        wd.precipProbability = day_node['precipProbability']
+        wd.precipType = day_node['precipType']
+        wd.uvIndex = day_node['uvIndex']
+        wd.visibility = day_node['visibility']
+        wd.sunriseTime = day_node['sunriseTime']
+        wd.sundownTime = day_node['sunsetTime']
+        wd.moonPhase = day_node['moonPhase']
 
-        return self
+        return wd
+    
+    @classmethod
+    def init_weather_com(cls, day):
+        wd = cls()
+        wd.temperatureMax = day[1]["hi"][0][1]
+        wd.temperatureMin = day[1]["low"][0][1]
+        wd.sunriseTime = day[1]["sunr"][0][1]
+        wd.sundownTime = day[1]["suns"][0][1]
 
-    def init_weather_com(self, day):
-
-        self.temperatureMax = day[1]["hi"][0][1]
-        self.temperatureMin = day[1]["low"][0][1]
-        self.sunriseTime = day[1]["sunr"][0][1]
-        self.sundownTime = day[1]["suns"][0][1]
-
-        self.windSpeed = day[1]["part"][0][1]["wind"][0][1]["s"][0][1]
-        self.windBearing = day[1]["part"][0][1]["wind"][0][1]["d"][0][1]
-        self.humidity = day[1]["part"][0][1]["hmid"][0][1]
-        self.precipProbability = day[1]["part"][0][1]["ppcp"][0][1]
-
-        return self
-
+        wd.windSpeed = day[1]["part"][0][1]["wind"][0][1]["s"][0][1]
+        wd.windBearing = day[1]["part"][0][1]["wind"][0][1]["d"][0][1]
+        wd.humidity = day[1]["part"][0][1]["hmid"][0][1]
+        wd.precipProbability = day[1]["part"][0][1]["ppcp"][0][1]
+        return wd
 
 class WeatherHour:
 
@@ -255,15 +259,17 @@ class WeatherHour:
         self.uvIndex = None
         self.visibility = None
         self.windSpeed = None
+        
+    @classmethod
+    def init_dark_sky(cls, hourly_node):
+        wh = cls()
+        wh.temperature = hourly_node['temperature']
+        wh.apparentTemperature = hourly_node['apparentTemperature']
+        wh.precipIntensity = hourly_node['precipIntensity']
+        wh.precipProbability = hourly_node['precipProbability']
+        wh.humidity = hourly_node['humidity']
+        wh.uvIndex = hourly_node['uvIndex']
+        wh.visibility = hourly_node['visibility']
+        wh.windSpeed = hourly_node['windSpeed']
 
-    def init_dark_sky(self, hourly_node):
-        self.temperature = hourly_node['temperature']
-        self.apparentTemperature = hourly_node['apparentTemperature']
-        self.precipIntensity = hourly_node['precipIntensity']
-        self.precipProbability = hourly_node['precipProbability']
-        self.humidity = hourly_node['humidity']
-        self.uvIndex = hourly_node['uvIndex']
-        self.visibility = hourly_node['visibility']
-        self.windSpeed = hourly_node['windSpeed']
-
-        return self
+        return wh
