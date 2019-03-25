@@ -63,25 +63,25 @@ class Weather:
         return w
 
 
-class Location:
+class WeatherLocation:
 
     weather_com_api = "http://wxdata.weather.com/wxdata/weather/local/%s?unit=%s&locale=%s&cc&dayf=%s"
     weather_com_search = "http://wxdata.weather.com/wxdata/search/search?where=%s&locale=%s"
     dark_sky_api = "https://api.darksky.net/forecast/%s/%s,%s?units=%s&lang=%s"
 
-    def __init__(self):
+    def __init__(self, dark_sky_key=None):
         self.com_id = None
         self.latitude = None
         self.longitude = None
 
-        self.locale = "en"  # TODO: Make locale automatically change between dark sky and weather.com
+        self.locale = "en"
+        # TODO: Make locale automatically change between dark sky and weather.com maybe map a dict?
         self.si_units = False
 
-        self.dark_sky_key = None
+        self.dark_sky_key = dark_sky_key
 
-    @classmethod
-    def search(cls, keyword):
-        data = requests.get(cls.weather_com_search % (keyword, cls().locale)).text
+    def search(self, keyword):
+        data = requests.get(self.weather_com_search % (keyword, self.locale)).text
         tree = ET.XML(data)  # type: ET.Element
         if len(tree) == 0:
             return None
@@ -93,32 +93,39 @@ class Location:
 
         return results
 
-    @classmethod
-    def select(cls, com_id):
-        l = cls()
-        l.com_id = com_id
-        response = requests.get(Location.weather_com_api % (l.com_id, l.unit, l.locale, 8)).text
-        tree = ET.XML(response)
-        loc = tree.find('loc')
-        l.longitude = loc.find('lon').text
-        l.latitude = loc.find('lat').text
-        return l
+    def select(self, com_id):
+        self.com_id = com_id
 
     def get_weather_com(self):
-        response = requests.get(Location.weather_com_api % (self.com_id, self.unit, self.locale, 8)).text
+        response = requests.get(
+            self.weather_com_api % (self.com_id, 'm' if self.si_units else 'f', self.locale, 8)).text
         return Weather.init_weather_com(response)
 
     def get_dark_sky(self):
-        response = requests.get(Location.dark_sky_api % (self.dark_sky_key,
-                                                         self.latitude,
-                                                         self.longitude,
-                                                         self.unit,
-                                                         self.locale)).json()
+        # Please don't move this to select. Show some love for the people
+        #  that are using weather.com (One less API call)
+        if self.latitude is None or self.longitude is None:
+            # find latitude and longitude using weather.com's api.
+            weather_com_response = requests.get(
+                self.weather_com_api % (self.com_id, 'm' if self.si_units else 'f', self.locale, 8)).text
+            tree = ET.XML(weather_com_response)  # type: ET.Element
+            loc = tree.find('loc')
+            self.com_id = loc.get('id')
+            self.longitude = loc.find('lon').text
+            self.latitude = loc.find('lat').text
+
+        response = requests.get(self.dark_sky_api % (self.dark_sky_key,
+                                                     self.latitude,
+                                                     self.longitude,
+                                                     ('si' if self.si_units else 'us'),
+                                                     self.locale)).json()
         return Weather.init_dark_sky(response)
 
-    @property
-    def unit(self):
-        return 'm' if self.si_units else 'f'
+    def get(self):  # no pref over weather.com and dark sky
+        if self.dark_sky_key is not None:
+            return self.get_dark_sky()
+        else:
+            return self.get_weather_com()
 
 
 class WeatherCurrent:
@@ -247,6 +254,7 @@ class WeatherDay:
         wd.humidity = day[1]["part"][0][1]["hmid"][0][1]
         wd.precipProbability = day[1]["part"][0][1]["ppcp"][0][1]
         return wd
+
 
 class WeatherHour:
 
