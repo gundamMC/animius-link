@@ -74,10 +74,12 @@ class _ClientThread(threading.Thread):
 
     def run(self):
         try:
-            resp = self.client.recv(65535)
-            resp = resp.decode()
-            resp = Response.initFromResp(resp)
-            handel_recv(resp)
+            while True:
+                resp = self.client.recv(65535)
+                resp = resp.decode()
+                resp = Response.initFromResp(resp)
+                handel_recv(resp)
+
         except:
             return None
 
@@ -87,5 +89,5 @@ def handel_recv(resp):
     status = resp.status
     message = resp.message
     data = resp.data
-    
+
     pass
