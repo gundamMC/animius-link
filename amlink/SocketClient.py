@@ -2,6 +2,8 @@ import json
 import socket
 import threading
 
+import amlink
+
 
 class Request:
 
@@ -46,11 +48,11 @@ class Client:
         else:
             self.pwd = ''
 
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._connect(pwd)
 
     def _connect(self, pwd):
-        self.client.connect((self.ip, self.port))
+        self.socket.connect((self.ip, self.port))
         self._send(pwd)
 
         thread = _ClientThread(self)
@@ -61,27 +63,40 @@ class Client:
         self._send(req)
 
     def _send(self, msg):
-        self.client.send(msg)
+        self.socket.send(msg)
+
+    def recv(self):
+        try:
+            resp = self._recv()
+            resp = resp.decode()
+            resp = Response.initFromResp(resp)
+            return resp
+        except:
+            return None
+
+    def _recv(self, mtu=65535):
+        return self.socket.recv(mtu)
 
     def close(self):
-        self.client.close()
+        self.socket.close()
 
 
 class _ClientThread(threading.Thread):
-    def __init__(self, client):
+    def __init__(self, ip, port, pwd):
         super(_ClientThread, self).__init__()
-        self.client = client
+        self.client = Client(ip, port, pwd)
 
     def run(self):
         try:
-            while True:
-                resp = self.client.recv(65535)
-                resp = resp.decode()
-                resp = Response.initFromResp(resp)
-                handel_recv(resp)
 
+            while True:
+                resp = self.client.recv()
+                handel_recv(resp)
         except:
             return None
+
+    def stop(self):
+        self.client.close()
 
 
 def handel_recv(resp):
@@ -90,4 +105,36 @@ def handel_recv(resp):
     message = resp.message
     data = resp.data
 
-    pass
+    if message == 'success':
+        intent = data['intent']
+        ner = parse_ner(data['ner'])
+        returnValue = amlink.module_controller.intents[intent].__call__(ner, 'gundamMC')
+        amlink.NetworkHandler.c2s(returnValue)
+    else:
+        return ''
+
+
+def parse_ner(ner):
+    output = []
+    last_label = ''
+
+    for i in ner:
+        word = i[0]
+        label = i[1]
+
+        if label != '':
+            if label == last_label:  # consecutive words
+                index = len(output[label]) - 1
+                output[label][index] = output[label][index], word
+            else:
+                output[label].append(word)
+
+        last_label = label
+
+    return output
+
+
+def start_client(ip, port, pwd):
+    thread = _ClientThread(ip, port, pwd)
+    thread.start()
+    return thread
