@@ -11,11 +11,9 @@ clientThread = amlink.SocketClient.start_client(ip, port, pwd)
 
 class NetworkHandler:
     @staticmethod
-    def s2c(id, command, arguments):
+    def toEngine(id, command, arguments):
         clientThread.client.send(id, command, arguments)
-        pass
 
     @staticmethod
-    def c2s(returnValue):
-        # serverThread.server.send(returnValue)
-        pass
+    def toClient(id, status, message, data):
+        serverThread.client.send(id, status, message, data)

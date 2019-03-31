@@ -2,6 +2,8 @@ import json
 import socket
 import threading
 
+import amlink
+
 clients = {}
 
 
@@ -87,8 +89,7 @@ def new_client(c, event):
 
         while True:
             req = c.recv()
-            response = handle_network(req)
-            c.send(response)
+            handle_network(req)
 
     except socket.error as error:
         print('Socket error from {0}: {1]'.format(c.address, error))
@@ -112,7 +113,7 @@ class _ServerThread(threading.Thread):
 
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
+        self.client = None
         self.port = port
 
         if local:
@@ -131,8 +132,8 @@ class _ServerThread(threading.Thread):
         while not self.event.is_set():
             # Accept Connection
             conn, addr = self.server.accept()
-            c = Client(conn, addr, self.pwd)
-            t = threading.Thread(target=new_client, args=(c, self.event))
+            self.client = Client(conn, addr, self.pwd)
+            t = threading.Thread(target=new_client, args=(self.client, self.event))
             t.start()
 
         # close server
@@ -151,5 +152,4 @@ def handle_network(req):
     id = req.id
     command = req.command
     arguments = req.arguments
-
-    return req
+    amlink.NetworkHandler.toEngine(id, command, arguments)

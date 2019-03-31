@@ -55,9 +55,6 @@ class Client:
         self.socket.connect((self.ip, self.port))
         self._send(pwd)
 
-        thread = _ClientThread(self)
-        thread.start()
-
     def send(self, id, command, arguments):
         req = Request.createReq(id, command, arguments)
         self._send(req)
@@ -108,8 +105,8 @@ def handel_recv(resp):
     if message == 'success':
         intent = data['intent']
         ner = parse_ner(data['ner'])
-        returnValue = amlink.module_controller.intents[intent].__call__(ner, 'gundamMC')
-        amlink.NetworkHandler.c2s(returnValue)
+        returnValue = amlink.module_controller.intents[intent].__call__(ner, data['username'])
+        amlink.NetworkHandler.toClient(id, status, message, returnValue)
     else:
         return ''
 
