@@ -4,7 +4,8 @@ import os
 
 intents = {}
 modules = {}
-
+start = []
+end = []
 
 def load():
     for file in os.listdir('modules'):
@@ -15,6 +16,23 @@ def load():
             if hasattr(modules[name], 'register_intents'):
                 intents.update(modules[name].register_intents)
 
+            if hasattr(modules[name], 'start'):
+                start.append(modules[name].start)
+
+            if hasattr(modules[name], 'end'):
+                end.append(modules[name].end)
+
+    for func in start:
+        func()
+
+def unload():
+    global intents, modules, start, end
+    for func in end:
+        func()
+    intents = {}
+    modules = {}
+    start = []
+    end = []
 
 load()
 
