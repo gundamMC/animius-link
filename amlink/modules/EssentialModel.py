@@ -11,10 +11,6 @@ class Users(Base):
     id = Column(Integer, autoincrement=True, primary_key=True)
     name = Column(Text,nullable=False,unique=True,index=True)
     password = Column(Text,nullable=False,index=True)
-    notes = relationship("Notes", backref='user', lazy='dynamic')
-    notes_category = relationship("NotesCategory", backref='user', lazy='dynamic')
-    reminders = relationship("Reminders", backref='user', lazy='dynamic')
-    reminders_category = relationship("RemindersCategory", backref='user', lazy='dynamic')
 
     @classmethod
     def getByName(cls,name):

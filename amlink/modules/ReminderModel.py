@@ -95,6 +95,7 @@ class RemindersCategory(Base):
         session.commit()
         return cate
 
+    @property
     def dumpToDict(self):
         d = {}
         d["id"] = self.id
