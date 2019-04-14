@@ -1,5 +1,6 @@
-import requests
 from xml.etree import ElementTree as ET
+
+import requests
 
 
 def nodetextToDict(node):
@@ -32,7 +33,7 @@ class Weather:
         self.daily_summary = None
         self.daily_icon = None
         self.daily = None
-        
+
     @classmethod
     def init_dark_sky(cls, response):
         w = cls()
@@ -64,7 +65,6 @@ class Weather:
 
 
 class WeatherLocation:
-
     weather_com_api = "http://wxdata.weather.com/wxdata/weather/local/%s?unit=%s&locale=%s&cc&dayf=%s"
     weather_com_search = "http://wxdata.weather.com/wxdata/search/search?where=%s&locale=%s"
     dark_sky_api = "https://api.darksky.net/forecast/%s/%s,%s?units=%s&lang=%s"
@@ -146,7 +146,7 @@ class WeatherCurrent:
         self.next_precip_change_time = None
         self.next_precip_change_intensity = None
         self.next_precip_change_prob = None
-        
+
     @classmethod
     def init_dark_sky(cls, json_node, minutely, intensity_threshold=0.05, prob_threshold=0.30):
         wc = cls()
@@ -178,7 +178,7 @@ class WeatherCurrent:
                 wc.next_precip_change_prob = minute['precipProbability']
 
         return wc
-    
+
     @classmethod
     def init_weather_com(cls, xml_node):
         wc = cls()
@@ -240,7 +240,7 @@ class WeatherDay:
         wd.moonPhase = day_node['moonPhase']
 
         return wd
-    
+
     @classmethod
     def init_weather_com(cls, day):
         wd = cls()
@@ -267,7 +267,7 @@ class WeatherHour:
         self.uvIndex = None
         self.visibility = None
         self.windSpeed = None
-        
+
     @classmethod
     def init_dark_sky(cls, hourly_node):
         wh = cls()

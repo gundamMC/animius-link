@@ -1,7 +1,6 @@
-from sqlalchemy import Column, String, Integer, Boolean, create_engine, ForeignKey, Text
-from sqlalchemy.orm import sessionmaker, relationship,session as s,scoped_session
-from database_controller import Base,initSession,closeSession
-import time
+from sqlalchemy import Column, Integer, Text
+
+from amlink.database_controller import Base, initSession
 
 session = initSession()
 
