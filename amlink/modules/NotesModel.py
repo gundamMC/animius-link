@@ -59,6 +59,10 @@ class Notes(Base):
         session.commit()
         return note0
 
+    @classmethod
+    def delete(cls, note):
+        session.delete(note)
+
     def dumpToDict(self):
         d = {}
         d["id"] = self.id

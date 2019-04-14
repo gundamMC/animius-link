@@ -33,6 +33,15 @@ class Reminders(Base):
                 cls.id.desc()).all()
         return session.query(cls).filter_by(user_id=user.id, category_id=cate.id, status=finish).all()
 
+    @classmethod
+    def seachByContext(cls, user, content):
+        """
+        :param user: User object
+        :param content:
+        :return:
+        """
+        return session.query(cls).filter_by(user_id=user.id, content=content).all()
+
     @property
     def overtime(self):
         return time.time() > self.deadline
@@ -52,6 +61,10 @@ class Reminders(Base):
         session.add(rmd)
         session.commit()
         return rmd
+
+    @classmethod
+    def delete(cls, reminder):
+        session.delete(reminder)
 
     def finish(self):
         self.status = True
