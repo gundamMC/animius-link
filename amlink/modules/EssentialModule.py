@@ -1,6 +1,7 @@
-from .EssentialModel import Users
-from database_controller import createTables,checkDatabase
+from amlink.database_controller import createTables, checkDatabase
 from . import EssentialModel
+from .EssentialModel import Users
+
 
 def initdb():
     if not checkDatabase(Users)[0]:

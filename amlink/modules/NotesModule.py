@@ -1,10 +1,12 @@
-from .NotesModel import Notes,NotesCategory
-from database_controller import createTables,checkDatabase
+from amlink.database_controller import createTables, checkDatabase
 from . import NotesModel
+from .NotesModel import Notes, NotesCategory
+
 
 def initdb():
-    if not checkDatabase(Notes,NotesCategory)[0]:
+    if not checkDatabase(Notes, NotesCategory)[0]:
         createTables()
+
 
 def closedb():
     NotesModel.session.close()
@@ -15,7 +17,7 @@ def note_look_up(name_entity_data, user):
 
 
 register_intents = {
-    "note":note_look_up,
+    "note": note_look_up,
 }
 
 start = initdb

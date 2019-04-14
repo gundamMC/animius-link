@@ -1,9 +1,12 @@
-from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Text
-from sqlalchemy.orm import sessionmaker, relationship,session as s,scoped_session
-from database_controller import Base,initSession,closeSession
 import time
 
+from sqlalchemy import Column, Integer, Boolean, ForeignKey, Text
+from sqlalchemy.orm import relationship
+
+from amlink.database_controller import Base, initSession
+
 session = initSession()
+
 
 class Reminders(Base):
     __tablename__ = 'reminders'
@@ -13,28 +16,29 @@ class Reminders(Base):
     detail = Column(Text)
     time = Column(Integer)
     deadline = Column(Integer)
-    status = Column(Boolean,default=False)
+    status = Column(Boolean, default=False)
     category_id = Column(Integer, ForeignKey("reminders_category.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
 
     @classmethod
-    def getAll(cls,user,finish=False,desc=False):
+    def getAll(cls, user, finish=False, desc=False):
         if desc:
-            return session.query(cls).filter_by(user_id=user.id,status=finish).order_by(cls.id.desc()).all()
-        return session.query(cls).filter_by(user_id=user.id,status=finish).all()
+            return session.query(cls).filter_by(user_id=user.id, status=finish).order_by(cls.id.desc()).all()
+        return session.query(cls).filter_by(user_id=user.id, status=finish).all()
 
     @classmethod
-    def getByCategory(cls,user,cate,finish=False,desc=False):
+    def getByCategory(cls, user, cate, finish=False, desc=False):
         if desc:
-            return session.query(cls).filter_by(user_id=user.id,category_id=cate.id,status = finish).order_by(cls.id.desc()).all()
-        return session.query(cls).filter_by(user_id=user.id,category_id=cate.id,status = finish).all()
+            return session.query(cls).filter_by(user_id=user.id, category_id=cate.id, status=finish).order_by(
+                cls.id.desc()).all()
+        return session.query(cls).filter_by(user_id=user.id, category_id=cate.id, status=finish).all()
 
     @property
     def overtime(self):
         return time.time() > self.deadline
 
     @classmethod
-    def add(cls,user, content,detail,dl, category):
+    def add(cls, user, content, detail, dl, category):
         """
         :param user: User object
         :param content: text
@@ -43,7 +47,8 @@ class Reminders(Base):
         :param category: RemindersCategory object
         :return:
         """
-        rmd = cls(user_id = user.id, content = content,detail = detail,deadline = dl,time = int(time.time()),category_id=category.id)
+        rmd = cls(user_id=user.id, content=content, detail=detail, deadline=dl, time=int(time.time()),
+                  category_id=category.id)
         session.add(rmd)
         session.commit()
         return rmd
@@ -65,7 +70,6 @@ class Reminders(Base):
         return d
 
 
-
 class RemindersCategory(Base):
     __tablename__ = 'reminders_category'
 
@@ -75,22 +79,22 @@ class RemindersCategory(Base):
     notes = relationship("Reminders", backref='category', lazy='dynamic')
 
     @classmethod
-    def getByName(cls,user,name):
-        return session.query(cls).filter_by(user_id=user.id,name=name).first()
+    def getByName(cls, user, name):
+        return session.query(cls).filter_by(user_id=user.id, name=name).first()
 
     @classmethod
-    def getRemindersByName(cls,user,name):
-        cate = cls.getByName(user,name)
+    def getRemindersByName(cls, user, name):
+        cate = cls.getByName(user, name)
         if cate == None:
             return []
         return cate.notes
 
     @classmethod
-    def add(cls,user,name):
-        cate = cls.getByName(user,name)
+    def add(cls, user, name):
+        cate = cls.getByName(user, name)
         if cate != None:
             return None
-        cate = cls(user_id=user.id,name=name)
+        cate = cls(user_id=user.id, name=name)
         session.add(cate)
         session.commit()
         return cate
