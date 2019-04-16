@@ -8,8 +8,9 @@ import amlink
 class Request:
 
     @staticmethod
-    def createReq(id, command, arguments):
+    def createReq(id, uid, command, arguments):
         req = {"id": id,
+               "uid": uid,
                "command": command,
                "arguments": arguments
                }
@@ -18,8 +19,9 @@ class Request:
 
 class Response:
 
-    def __init__(self, id, status, message, data):
+    def __init__(self, id, uid, status, message, data):
         self.id = id
+        self.uid = uid
         self.status = status
         self.message = message
         self.data = data
@@ -28,7 +30,7 @@ class Response:
     def initFromResp(cls, resp):
         try:
             respJson = json.loads(resp)
-            return cls(respJson["id"], respJson["status"], respJson["message"], respJson['data'])
+            return cls(respJson["id"], respJson["uid"], respJson["status"], respJson["message"], respJson['data'])
         except:
             return None
 
@@ -55,8 +57,8 @@ class Client:
         self.socket.connect((self.ip, self.port))
         self._send(pwd)
 
-    def send(self, id, command, arguments):
-        req = Request.createReq(id, command, arguments)
+    def send(self, id, uid, command, arguments):
+        req = Request.createReq(id, uid, command, arguments)
         self._send(req)
 
     def _send(self, msg):
@@ -98,6 +100,7 @@ class _ClientThread(threading.Thread):
 
 def handel_recv(resp):
     id = resp.id
+    uid = resp.uid
     status = resp.status
     message = resp.message
     data = resp.data
@@ -105,8 +108,8 @@ def handel_recv(resp):
     if message == 'success':
         intent = data['intent']
         ner = parse_ner(data['ner'])
-        returnValue = amlink.module_controller.intents[intent].__call__(ner, data['username'])
-        amlink.NetworkHandler.toClient(id, status, message, returnValue)
+        return_value = amlink.module_controller.intents[intent].__call__(ner, uid)
+        amlink.NetworkHandler.toClient(id, status, message, return_value)
     else:
         return ''
 

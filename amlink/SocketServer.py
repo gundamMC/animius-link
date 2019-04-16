@@ -35,10 +35,9 @@ class Response:
 
 
 class Client:
-    def __init__(self, socket, address, pwd):
+    def __init__(self, socket, address):
         self.address = address[0]
         self.port = address[1]
-        self.pwd = pwd
         self.socket = socket
 
     def _send(self, data):
@@ -77,19 +76,23 @@ def new_client(c, event):
 
     try:
         print('Establishing connection with: {0}:{1}'.format(c.address, c.port))
-        # check for password
-        if c.pwd != '':
-            recvPwd = c.recv_pass()
-            if recvPwd != c.pwd:
-                # wrong password, close connection
-                c.close()
 
-        # password verified and connected
-        c.send('', 0, 'success', {})
+        # [Username, Password]
+        recv = c.recv_pass()
+        user_name = recv[0]
+        password = recv[1]
+
+        user_object = amlink.users.get_user(user_name)
+
+        if user_object.checkPassword(password) is False:
+            # wrong password, close connection
+            c.close()
+
+        c.send('', 0, 'Login: {0}'.format(user_name), {})
 
         while True:
             req = c.recv()
-            handle_network(req)
+            handle_network(req, user_object.id)
 
     except socket.error as error:
         print('Socket error from {0}: {1]'.format(c.address, error))
@@ -100,14 +103,14 @@ def new_client(c, event):
         c.close()
 
 
-def start_server(port, local=True, pwd='', max_clients=10):
-    thread = _ServerThread(port, local, pwd, max_clients)
+def start_server(port, local=True, max_clients=10):
+    thread = _ServerThread(port, local, max_clients)
     thread.start()
     return thread
 
 
 class _ServerThread(threading.Thread):
-    def __init__(self, port, local=True, pwd='', max_clients=10):
+    def __init__(self, port, local=True, max_clients=10):
         super(_ServerThread, self).__init__()
         self.event = threading.Event()
 
@@ -121,8 +124,6 @@ class _ServerThread(threading.Thread):
         else:
             self.host = socket.gethostname()
         self.server.bind((self.host, port))
-
-        self.pwd = pwd
         self.max_clients = max_clients
 
     def run(self):
@@ -132,7 +133,7 @@ class _ServerThread(threading.Thread):
         while not self.event.is_set():
             # Accept Connection
             conn, addr = self.server.accept()
-            self.client = Client(conn, addr, self.pwd)
+            self.client = Client(conn, addr)
             t = threading.Thread(target=new_client, args=(self.client, self.event))
             t.start()
 
@@ -148,8 +149,9 @@ class _ServerThread(threading.Thread):
         # send a fake client to let run() move on from self.server.accept()
 
 
-def handle_network(req):
+def handle_network(req, uid):
     id = req.id
     command = req.command
     arguments = req.arguments
-    amlink.NetworkHandler.toEngine(id, command, arguments)
+    uid = uid
+    amlink.NetworkHandler.toEngine(id, uid, command, arguments)
