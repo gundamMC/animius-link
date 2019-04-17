@@ -35,10 +35,11 @@ class Response:
 
 
 class Client:
-    def __init__(self, socket, address):
+    def __init__(self, socket, address, cid):
         self.address = address[0]
         self.port = address[1]
         self.socket = socket
+        self.cid = cid
 
     def _send(self, data):
         self.socket.send(data)
@@ -77,8 +78,9 @@ def new_client(c, event):
     try:
         print('Establishing connection with: {0}:{1}'.format(c.address, c.port))
 
-        # [Username, Password]
+        # "Username,Password"
         recv = c.recv_pass()
+        recv = recv.split(',')
         user_name = recv[0]
         password = recv[1]
 
@@ -92,7 +94,7 @@ def new_client(c, event):
 
         while True:
             req = c.recv()
-            handle_network(req, user_object.id)
+            handle_network(req, c.cid, user_object.name)
 
     except socket.error as error:
         print('Socket error from {0}: {1]'.format(c.address, error))
@@ -116,7 +118,7 @@ class _ServerThread(threading.Thread):
 
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.client = None
+        self.clients = list()
         self.port = port
 
         if local:
@@ -133,8 +135,11 @@ class _ServerThread(threading.Thread):
         while not self.event.is_set():
             # Accept Connection
             conn, addr = self.server.accept()
-            self.client = Client(conn, addr)
-            t = threading.Thread(target=new_client, args=(self.client, self.event))
+
+            cid = len(self.clients)
+            self.clients.append(Client(conn, addr, cid))
+
+            t = threading.Thread(target=new_client, args=(self.clients[cid], self.event))
             t.start()
 
         # close server
@@ -149,9 +154,9 @@ class _ServerThread(threading.Thread):
         # send a fake client to let run() move on from self.server.accept()
 
 
-def handle_network(req, uid):
+def handle_network(req, cid, username):
     id = req.id
     command = req.command
     arguments = req.arguments
-    uid = uid
-    amlink.NetworkHandler.toEngine(id, uid, command, arguments)
+    username = username
+    amlink.NetworkHandler.toEngine(id, cid, username, command, arguments)
