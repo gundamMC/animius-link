@@ -97,7 +97,7 @@ class _ClientThread(threading.Thread):
 
 
 def parse_ner(ner):
-    output = []
+    output = {}  # dict of list
     last_label = ''
 
     for i in ner:
@@ -107,7 +107,7 @@ def parse_ner(ner):
         if label != '':
             if label == last_label:  # consecutive words
                 index = len(output[label]) - 1
-                output[label][index] = output[label][index], word
+                output[label][index] = output[label][index] + ' ' + word
             else:
                 output[label].append(word)
 

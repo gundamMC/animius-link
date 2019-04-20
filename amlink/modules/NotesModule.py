@@ -13,29 +13,40 @@ def closedb():
 
 
 def note_look_up(name_entity_data, user):
-    title = ''
+    title = name_entity_data['title']
     note = Notes.seachByTitle(user, title)
     text = note.text
     time = note.time
-    returntext = text
+    dict = {"title": title,
+            "text": text,
+            "time": time
+            }
 
-    return returntext
+    return dict
 
 
 def add_note(name_entity_data, user):
-    title = ''
-    note = ''
-    category = ''
+    title = name_entity_data['title']
+    note = name_entity_data['text']
+    category = name_entity_data['title']
     if title == '':
         title = note[:10]
 
     Notes.add(user, title, note, category)
 
+    dict = {"title": title,
+            "text": note
+            }
+
+    return dict
+
 
 def del_note(name_entity_data, user):
-    title = ''
+    title = name_entity_data['title']
     note = Notes.seachByTitle(user, title)
     Notes.delete(note)
+
+    return {}
 
 
 register_intents = {

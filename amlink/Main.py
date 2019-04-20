@@ -1,3 +1,5 @@
+import json
+
 import amlink
 
 id_username = {}
@@ -29,4 +31,6 @@ class NetworkHandler:
             cid = id_username[id][0]
             username = id_username[id][1]
             return_value = amlink.module_controller.intents[intent].__call__(ner, username)
+            # return dict of data
+            return_value = json.dumps(return_value).encode("utf-8")
             serverThread.clients[cid].send(id, status, message, return_value)

@@ -13,33 +13,46 @@ def closedb():
 
 
 def reminder_look_up(name_entity_data, user):
-    content = ''
+    content = name_entity_data['title']
     reminder = Reminders.seachByContext(user, content)
     detail = reminder.detail
     time = reminder.time
     deadline = reminder.ddl
     status = reminder.status
-    returntext = detail
 
-    return returntext
+    dict = {"content": content,
+            "time": time,
+            "detail": detail,
+            "deadline": deadline,
+            "status": status,
+            }
+
+    return dict
 
 
 def add_reminder(name_entity_data, user):
-    detail = ''
-    content = ''
-    category = ''
-    dl = ''
+    detail = name_entity_data['title']
+    content = name_entity_data['title']
+    category = name_entity_data['title']
+    dl = name_entity_data['time']
 
     if detail == '':
         detail = content[:10]
 
     Reminders.add(user, content, detail, dl, category)
+    dict = {"content": content,
+            "deadline": dl,
+            "detail": detail,
+            "category": category
+            }
+    return dict
 
 
 def del_reminder(name_entity_data, user):
-    context = ''
+    context = name_entity_data['title']
     reminder = Reminders.seachByContext(user, context)
     Reminders.delete(reminder)
+    return {}
 
 
 register_intents = {
