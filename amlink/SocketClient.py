@@ -96,20 +96,27 @@ class _ClientThread(threading.Thread):
         self.client.close()
 
 
-def parse_ner(ner):
+def parse_ner(sentence, ner):
+    # sentence and ner should be two lists of strings
+    # e.g.
+    # sentence = ['weather', 'in', 'san', 'francisco', 'tonight', 'at', '6', 'pm', '?']
+    # ner = ['', '', 'place', 'place', 'time', '', 'time', 'time', '']
+
     output = {}  # dict of list
     last_label = ''
 
-    for i in ner:
-        word = i[0]
-        label = i[1]
+    for i in range(len(sentence)):
+        word = sentence[i]
+        label = ner[i]
 
         if label != '':
             if label == last_label:  # consecutive words
-                index = len(output[label]) - 1
-                output[label][index] = output[label][index] + ' ' + word
+                output[label][-1] = output[label][-1] + ' ' + word
             else:
-                output[label].append(word)
+                if label in output:  # already existing label
+                    output[label].append(word)
+                else:  # new label
+                    output[label] = [ word ]
 
         last_label = label
 
