@@ -1,15 +1,14 @@
 import json
 
-import amlink
+from amlink import SocketClient, SocketServer, module_controller
 
 id_username = {}
 ip = '127.0.0.1'
-port = 44514
+port = 23333
 
-serverThread = amlink.SocketServer.start_server(port + 1, True)
-
-clientThread = amlink.SocketClient.start_client(ip, port, '')
-
+if __name__ == "__main__":
+    serverThread = SocketServer.start_server(port + 1, True)
+    clientThread = SocketClient.start_client(ip, port, 'p@ssword')
 
 class NetworkHandler:
 
@@ -27,10 +26,10 @@ class NetworkHandler:
 
         if message == 'success':
             intent = data['intent']
-            ner = amlink.SocketClient.parse_ner(data['ner'])
+            ner = SocketClient.parse_ner(data['ner'][0], data['ner'][1])
             cid = id_username[id][0]
             username = id_username[id][1]
-            return_value = amlink.module_controller.intents[intent].__call__(ner, username)
+            return_value = module_controller.intents[intent].__call__(ner, username)
             # return dict of data
             return_value = json.dumps(return_value).encode("utf-8")
             serverThread.clients[cid].send(id, status, message, return_value)

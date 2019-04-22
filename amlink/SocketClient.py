@@ -34,7 +34,7 @@ class Response:
 
 
 class Client:
-    def __init__(self, ip, port, pwd):
+    def __init__(self, ip, port):
         if ip:
             self.ip = ip
         else:
@@ -43,15 +43,9 @@ class Client:
         if port:
             self.port = port
 
-        if pwd:
-            self.pwd = pwd
-        else:
-            self.pwd = ''
-
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._connect(pwd)
 
-    def _connect(self, pwd):
+    def connect(self, pwd):
         self.socket.connect((self.ip, self.port))
         self._send(pwd)
 
@@ -60,7 +54,7 @@ class Client:
         self._send(req)
 
     def _send(self, msg):
-        self.socket.send(msg)
+        self.socket.send(str.encode(msg))
 
     def recv(self):
         try:
@@ -78,22 +72,32 @@ class Client:
         self.socket.close()
 
 
-class _ClientThread(threading.Thread):
+class ClientThread(threading.Thread):
     def __init__(self, ip, port, pwd):
-        super(_ClientThread, self).__init__()
-        self.client = Client(ip, port, pwd)
+        threading.Thread.__init__(self)
+        self.pwd = pwd
+        self.client = Client(ip, port)
 
     def run(self):
         try:
+            self.client.connect(self.pwd)
 
             while True:
                 resp = self.client.recv()
                 amlink.NetworkHandler.toClient(resp)
+
         except:
             return None
 
     def stop(self):
         self.client.close()
+
+
+def start_client(ip, port, pwd):
+    if __name__ == "amlink.SocketClient":
+        thread = ClientThread(ip, port, pwd)
+        thread.run()
+        return thread
 
 
 def parse_ner(sentence, ner):
@@ -116,14 +120,8 @@ def parse_ner(sentence, ner):
                 if label in output:  # already existing label
                     output[label].append(word)
                 else:  # new label
-                    output[label] = [ word ]
+                    output[label] = [word]
 
         last_label = label
 
     return output
-
-
-def start_client(ip, port, pwd):
-    thread = _ClientThread(ip, port, pwd)
-    thread.start()
-    return thread
