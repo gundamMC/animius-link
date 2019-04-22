@@ -1,11 +1,11 @@
 import importlib
 import os
 
-
 intents = {}
 modules = {}
 start = []
 end = []
+
 
 def load():
     for file in os.listdir('modules'):
@@ -25,6 +25,7 @@ def load():
     for func in start:
         func()
 
+
 def unload():
     global intents, modules, start, end
     for func in end:
@@ -34,8 +35,9 @@ def unload():
     start = []
     end = []
 
+
 load()
 
 print('intents' + str(intents))
 
-intents['weather'].__call__('some ner data', 'gundamMC')
+# intents['weather'].__call__('some ner data', 'gundamMC')

@@ -33,7 +33,7 @@ def reminder_look_up(name_entity_data, user):
 def add_reminder(name_entity_data, user):
     detail = name_entity_data['title']
     content = name_entity_data['title']
-    category = name_entity_data['title']
+    category = 'main'
     dl = name_entity_data['time']
 
     if detail == '':
@@ -57,6 +57,8 @@ def del_reminder(name_entity_data, user):
 
 register_intents = {
     "reminder": reminder_look_up,
+    "add reminder": add_reminder,
+    "delete reminder": del_reminder
 }
 
 start = initdb

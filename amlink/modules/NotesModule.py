@@ -28,7 +28,7 @@ def note_look_up(name_entity_data, user):
 def add_note(name_entity_data, user):
     title = name_entity_data['title']
     note = name_entity_data['text']
-    category = name_entity_data['title']
+    category = "main"
     if title == '':
         title = note[:10]
 
@@ -51,6 +51,8 @@ def del_note(name_entity_data, user):
 
 register_intents = {
     "note": note_look_up,
+    "add note": add_note,
+    "delete note": del_note
 }
 
 start = initdb
