@@ -1,4 +1,4 @@
-import json
+import json, queue
 
 from amlink import SocketClient, SocketServer, module_controller
 
@@ -7,8 +7,13 @@ ip = '127.0.0.1'
 port = 23333
 
 if __name__ == "__main__":
-    serverThread = SocketServer.start_server(port + 1, True)
-    clientThread = SocketClient.start_client(ip, port, 'p@ssword')
+    # serverThread = SocketServer.start_server(port + 1, True)
+    clientThread, sendQueue = SocketClient.start_client(ip, port, 'p@ssword')
+    clientThread.client.send(0, 'getModels', '')
+    sendQueue.put({'id': 0, 'command': 'getModels', 'arguments': ''})
+    print('qq')
+    sendQueue.put({'id': 0, 'command': 'gfffftModels', 'arguments': ''})
+
 
 class NetworkHandler:
 
@@ -24,7 +29,7 @@ class NetworkHandler:
         message = resp.message
         data = resp.data
 
-        if message == 'success':
+        if message == 'sucess':
             intent = data['intent']
             ner = SocketClient.parse_ner(data['ner'][0], data['ner'][1])
             cid = id_username[id][0]

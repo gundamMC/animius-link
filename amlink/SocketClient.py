@@ -1,7 +1,7 @@
 import json
 import socket
 import threading
-
+import queue
 import amlink
 
 
@@ -13,7 +13,7 @@ class Request:
                "command": command,
                "arguments": arguments
                }
-        return json.dumps(req).encode("utf-8")
+        return json.dumps(req)
 
 
 class Response:
@@ -26,11 +26,8 @@ class Response:
 
     @classmethod
     def initFromResp(cls, resp):
-        try:
-            respJson = json.loads(resp)
-            return cls(respJson["id"], respJson["status"], respJson["message"], respJson['data'])
-        except:
-            return None
+        respJson = json.loads(resp)
+        return cls(respJson["id"], respJson["status"], respJson["message"], respJson['data'])
 
 
 class Client:
@@ -51,18 +48,21 @@ class Client:
 
     def send(self, id, command, arguments):
         req = Request.createReq(id, command, arguments)
+        print(req)
         self._send(req)
 
     def _send(self, msg):
-        self.socket.send(str.encode(msg))
+        self.socket.send(msg.encode('utf-8'))
 
     def recv(self):
         try:
             resp = self._recv()
             resp = resp.decode()
+            print(resp)
             resp = Response.initFromResp(resp)
             return resp
-        except:
+
+        finally:
             return None
 
     def _recv(self, mtu=65535):
@@ -73,31 +73,35 @@ class Client:
 
 
 class ClientThread(threading.Thread):
-    def __init__(self, ip, port, pwd):
+    def __init__(self, ip, port, pwd, sendQueue):
         threading.Thread.__init__(self)
         self.pwd = pwd
         self.client = Client(ip, port)
+        self.queue = sendQueue
 
     def run(self):
-        try:
-            self.client.connect(self.pwd)
+        self.client.connect(self.pwd)
 
-            while True:
-                resp = self.client.recv()
-                amlink.NetworkHandler.toClient(resp)
+        while True:
+            # if not self.queue.empty():
+            #     result = self.queue.get()
+            #     self.client.send(result['id'], result['command'], result['arguments'])
+            #     self.queue.task_done()
 
-        except:
-            return None
+            resp = self.client.recv()
+            if resp is None or resp is "":
+                continue
+            amlink.NetworkHandler.toClient(resp)
 
     def stop(self):
         self.client.close()
 
 
 def start_client(ip, port, pwd):
-    if __name__ == "amlink.SocketClient":
-        thread = ClientThread(ip, port, pwd)
-        thread.run()
-        return thread
+    sendQueue = queue.Queue(0)
+    thread = ClientThread(ip, port, pwd, sendQueue)
+    thread.run()
+    return thread, sendQueue
 
 
 def parse_ner(sentence, ner):
