@@ -1,7 +1,9 @@
 import json
-import socket
-import threading
 import queue
+import socket
+import struct
+import threading
+
 import amlink
 
 
@@ -51,8 +53,26 @@ class Client:
         print(req)
         self._send(req)
 
-    def _send(self, msg):
-        self.socket.send(msg.encode('utf-8'))
+    def _send(self, data):
+        data = data.encode('utf-8')
+        length = len(data)
+        self.socket.sendall(struct.pack('!I', length))
+        self.socket.sendall(data)
+
+    def _recvall(self, count):
+        buf = b''
+        while count:
+            newbuf = self.socket.recv(count)
+            if not newbuf:
+                return None
+            buf += newbuf
+            count -= len(newbuf)
+        return buf
+
+    def _recv(self):
+        lengthbuf = self._recvall(4)
+        length, = struct.unpack('!I', lengthbuf)
+        return self._recvall(length)
 
     def recv(self):
         try:
@@ -65,9 +85,6 @@ class Client:
         finally:
             return None
 
-    def _recv(self, mtu=65535):
-        return self.socket.recv(mtu)
-
     def close(self):
         self.socket.close()
 
@@ -78,22 +95,29 @@ class ClientThread(threading.Thread):
         self.pwd = pwd
         self.client = Client(ip, port)
         self.queue = sendQueue
+        self.sendThread = threading.Thread(target=self.send_queue, args=())
 
     def run(self):
         self.client.connect(self.pwd)
+        self.sendThread.start()
+        self.queue.put({'id': 0, 'command': 'getModels', 'arguments': ''})
 
         while True:
-            # if not self.queue.empty():
-            #     result = self.queue.get()
-            #     self.client.send(result['id'], result['command'], result['arguments'])
-            #     self.queue.task_done()
-
             resp = self.client.recv()
             if resp is None or resp is "":
                 continue
             amlink.NetworkHandler.toClient(resp)
 
+    def send_queue(self):
+        while True:
+            if not self.queue.empty():
+                result = self.queue.get()
+                print(result, 'queue')
+                self.client.send(result['id'], result['command'], result['arguments'])
+                self.queue.task_done()
+
     def stop(self):
+        self.sendThread.join()
         self.client.close()
 
 
