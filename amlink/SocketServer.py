@@ -1,10 +1,9 @@
 import json
 import socket
+import struct
 import threading
 
 import amlink
-
-clients = {}
 
 
 class Request:
@@ -42,10 +41,25 @@ class Client:
         self.cid = cid
 
     def _send(self, data):
-        self.socket.send(data)
+        data = data.encode('utf-8')
+        length = len(data)
+        self.socket.sendall(struct.pack('!I', length))
+        self.socket.sendall(data)
 
-    def _recv(self, mtu=65535):
-        return self.socket.recv(mtu)
+    def _recvall(self, count):
+        buf = b''
+        while count:
+            newbuf = self.socket.recv(count)
+            if not newbuf:
+                return None
+            buf += newbuf
+            count -= len(newbuf)
+        return buf
+
+    def _recv(self):
+        lengthbuf = self._recvall(4)
+        length, = struct.unpack('!I', lengthbuf)
+        return self._recvall(length)
 
     def send(self, id, status, message, data):
         resp = Response.createResp(id, status, message, data)

@@ -1,19 +1,14 @@
 import json
 
-from amlink import SocketClient, module_controller
+from amlink import SocketClient, SocketServer, module_controller
 
 id_username = {}
 ip = '127.0.0.1'
 port = 2333
 
 if __name__ == "__main__":
-    # serverThread = SocketServer.start_server(port + 1, True)
-    clientThread, sendQueue = SocketClient.start_client(ip, port, 'p@ssword')
-
-    # sendQueue.put({'id': 0, 'command': 'getModels', 'arguments': ''})
-    # print('qq')
-    # sendQueue.put({'id': 0, 'command': 'gfffftModels', 'arguments': ''})
-
+    serverThread, serverSendQueue = SocketServer.start_server(port + 1, True)
+    clientThread, clientSendQueue = SocketClient.start_client(ip, port, 'p@ssword')
 
 class NetworkHandler:
 
@@ -25,7 +20,7 @@ class NetworkHandler:
         else:
             id_username[id] = [cid, username, False]
 
-        sendQueue.put({'id': id, 'command': command, 'arguments': arguments})
+        clientSendQueue.put({'id': id, 'command': command, 'arguments': arguments})
         # clientThread.client.send(id, command, arguments)
 
     @staticmethod
