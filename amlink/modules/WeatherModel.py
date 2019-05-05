@@ -65,8 +65,8 @@ class Weather:
 
 
 class WeatherLocation:
-    weather_com_api = "http://wxdata.weather.com/wxdata/weather/local/%s?unit=%s&locale=%s&cc&dayf=%s"
-    weather_com_search = "http://wxdata.weather.com/wxdata/search/search?where=%s&locale=%s"
+    weather_com_api = "https://wxdata.weather.com/wxdata/weather/local/%s?unit=%s&locale=%s&cc&dayf=%s"
+    weather_com_search = "https://wxdata.weather.com/wxdata/search/search?where=%s&locale=%s"
     dark_sky_api = "https://api.darksky.net/forecast/%s/%s,%s?units=%s&lang=%s"
 
     def __init__(self, dark_sky_key=None):

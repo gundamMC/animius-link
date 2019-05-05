@@ -100,7 +100,7 @@ class ClientThread(threading.Thread):
     def run(self):
         self.client.connect(self.pwd)
         self.sendThread.start()
-        self.queue.put({'id': 0, 'command': 'getModels', 'arguments': ''})
+        # self.queue.put({'id': 0, 'command': 'getModels', 'arguments': ''})
 
         while True:
             resp = self.client.recv()
