@@ -12,7 +12,6 @@ sio = socketio.AsyncServer(async_mode='asgi')
 # wrap with ASGI application
 app = socketio.ASGIApp(sio)
 
-users = {}
 
 class MyCustomNamespace(socketio.AsyncNamespace):
 
@@ -22,9 +21,7 @@ class MyCustomNamespace(socketio.AsyncNamespace):
     #     self.users = []
 
     async def on_connect(self, sid, environ):
-        print(sid)
-        print(environ)
-        users[sid] = None
+        print('connected')
 
     async def on_disconnect(self, sid):
         pass
@@ -39,12 +36,25 @@ class MyCustomNamespace(socketio.AsyncNamespace):
 
         user = amlink.users.get_user(data['username'])
 
-        if user is None or not user.check_password(data['password']):
+        if user is None or not user.checkPassword(data['password']):
             return 'The username or password is incorrect'
 
+        await sio.save_session(sid, {'username': data['username']})
         return True
+
+    async def on_register(self, sid, data):
+        if amlink.config['allow_registration']:
+            if 'username' in data and 'password' in data:
+                amlink.users.create_user(data['username'], data['password'])
+                await sio.save_session(sid, {'username': data['username']})
+
+                return True
+            else:
+                return 'Username and password must be included'
+        else:
+            return 'Registration is disabled'
 
 
 sio.register_namespace(MyCustomNamespace())
 
-uvicorn.run(app, host='127.0.0.1', port=5000)
+uvicorn.run(app, host='192.168.0.50', port=5000)
