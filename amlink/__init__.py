@@ -1,3 +1,5 @@
+from amlink.config import config
+
 import amlink.SocketClient as SocketClient
 import amlink.SocketServer as SocketServer
 import amlink.database_controller as database_controller
