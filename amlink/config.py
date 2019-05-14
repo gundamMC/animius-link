@@ -1,16 +1,17 @@
 import json
 
 config = {
-  'allow_registration':  True,
-  'register_key': 'some random key',
-  'ip': '127.0.0.1',
-  'socket_port': 5001,
-  'socket.io_port': 5000
+    'allow_registration': True,
+    'register_key': 'some random key',
+    'ip': '127.0.0.1',
+    'engine_port': 5002,
+    'engine_password': 'p@ssword',
+    'socket_port': 5001,
+    'socket.io_port': 5000
 }
 
 
 def load(path='./config.json'):
-
     global config
 
     try:
