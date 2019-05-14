@@ -4,8 +4,6 @@ import socket
 import struct
 import threading
 
-import amlink
-
 
 class Request:
 
@@ -34,14 +32,8 @@ class Response:
 
 class Client:
     def __init__(self, ip, port):
-        if ip:
-            self.ip = ip
-        else:
-            self.ip = 'localhost'
-
-        if port:
-            self.port = port
-
+        self.ip = ip
+        self.port = port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def connect(self, pwd):
@@ -89,42 +81,37 @@ class Client:
         self.socket.close()
 
 
-class ClientThread(threading.Thread):
-    def __init__(self, ip, port, pwd, sendQueue):
-        threading.Thread.__init__(self)
-        self.pwd = pwd
-        self.client = Client(ip, port)
-        self.queue = sendQueue
-        self.sendThread = threading.Thread(target=self.send_queue, args=())
+def create_client_thread(network, ip, port, pwd, sendQueue):
+    client = Client(ip, port)
+    queue = sendQueue
+    sendThread = threading.Thread(target=send_queue, args=(client, queue))
+    sendThread.daemon = True
+    client.connect(pwd)
 
-    def run(self):
-        self.client.connect(self.pwd)
-        self.sendThread.start()
-        # self.queue.put({'id': 0, 'command': 'getModels', 'arguments': ''})
+    sendThread.start()
+    # self.queue.put({'id': 0, 'command': 'getModels', 'arguments': ''})
 
-        while True:
-            resp = self.client.recv()
-            if resp is None or resp is "":
-                continue
-            amlink.NetworkHandler.toClient(resp)
-
-    def send_queue(self):
-        while True:
-            if not self.queue.empty():
-                result = self.queue.get()
-                print(result, 'queue')
-                self.client.send(result['id'], result['command'], result['arguments'])
-                self.queue.task_done()
-
-    def stop(self):
-        self.sendThread.join()
-        self.client.close()
+    while True:
+        resp = client.recv()
+        if resp is None or resp is "":
+            continue
+        network.toClient(resp)
 
 
-def start_client(ip, port, pwd):
+def send_queue(client, queue):
+    while True:
+        if not queue.empty():
+            result = queue.get()
+            print(result, 'queue')
+            client.send(result['id'], result['command'], result['arguments'])
+            queue.task_done()
+
+
+def start_client(network, ip, port, pwd):
     sendQueue = queue.Queue(0)
-    thread = ClientThread(ip, port, pwd, sendQueue)
-    thread.run()
+    thread = threading.Thread(target=create_client_thread, args=(network, ip, port, pwd, sendQueue))
+    thread.daemon = True
+    thread.start()
     return thread, sendQueue
 
 
