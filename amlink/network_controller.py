@@ -11,7 +11,7 @@ class Network:
         self.socket_port = 5001  # config['socket_port']
         self.engine_port = 5002  # config['engine_port']
         self.engine_passowrd = 'p@ssword'  # config['engine_password']
-        self.serverThread = SocketServer.start_server(self, self.socket_port, True)
+        self.serverThread, self.clients = SocketServer.start_server(self, self.socket_port, True)
         self.clientThread, self.clientSendQueue = SocketClient.start_client(self, self.ip, self.engine_port,
                                                                             self.engine_passowrd)
 
@@ -43,5 +43,5 @@ class Network:
             else:
                 return_value = resp.data
 
-            return_value = json.dumps(return_value).encode("utf-8")
-            self.serverThread.clients[cid].send(id, status, message, return_value)
+            return_value = json.dumps(return_value)
+            self.clients[cid].send(id, status, message, return_value)

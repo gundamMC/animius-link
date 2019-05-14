@@ -117,18 +117,18 @@ def new_client(network, client, event):
 
 
 def start_server(network, port, local=True, max_clients=10):
-    thread = threading.Thread(target=create_server_thread, args=(network, port, local, max_clients))
+    clients = list()
+    thread = threading.Thread(target=create_server_thread, args=(network, clients, port, local, max_clients))
     thread.daemon = True
     thread.start()
-    return thread
+    return thread, clients
 
 
-def create_server_thread(network, port, local=True, max_clients=10):
+def create_server_thread(network, clients, port, local=True, max_clients=10):
     event = threading.Event()
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    clients = list()
 
     if local:
         host = '127.0.0.1'

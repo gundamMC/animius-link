@@ -67,15 +67,15 @@ class Client:
         return self._recvall(length)
 
     def recv(self):
-        try:
-            resp = self._recv()
-            resp = resp.decode()
-            print(resp)
-            resp = Response.initFromResp(resp)
-            return resp
+        resp = self._recv()
+        resp = resp.decode()
+        print(resp)
+        resp = Response.initFromResp(resp)
 
-        finally:
+        if resp.id == '':
             return None
+        else:
+            return resp
 
     def close(self):
         self.socket.close()
@@ -93,6 +93,7 @@ def create_client_thread(network, ip, port, pwd, sendQueue):
 
     while True:
         resp = client.recv()
+
         if resp is None or resp is "":
             continue
         network.toClient(resp)
