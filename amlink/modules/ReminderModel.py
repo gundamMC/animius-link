@@ -72,7 +72,7 @@ class Reminders(Base):
         return True
 
     def dumpToDict(self):
-        d = {}
+        d = dict()
         d["id"] = self.id
         d["content"] = self.content
         d["detail"] = self.detail
@@ -98,14 +98,14 @@ class RemindersCategory(Base):
     @classmethod
     def getRemindersByName(cls, user, name):
         cate = cls.getByName(user, name)
-        if cate == None:
+        if cate is None:
             return []
         return cate.notes
 
     @classmethod
     def add(cls, user, name):
         cate = cls.getByName(user, name)
-        if cate != None:
+        if cate is not None:
             return None
         cate = cls(user_id=user.id, name=name)
         session.add(cate)
@@ -114,7 +114,7 @@ class RemindersCategory(Base):
 
     @property
     def dumpToDict(self):
-        d = {}
+        d = dict()
         d["id"] = self.id
         d["name"] = self.name
         return d

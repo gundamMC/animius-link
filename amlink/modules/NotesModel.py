@@ -64,7 +64,7 @@ class Notes(Base):
         session.delete(note)
 
     def dumpToDict(self):
-        d = {}
+        d = dict()
         d["id"] = self.id
         d["title"] = self.title
         d["note"] = self.note
@@ -88,7 +88,7 @@ class NotesCategory(Base):
     @classmethod
     def add(cls, user, name):
         cate = cls.getByName(user, name)
-        if cate != None:
+        if cate is not None:
             return None
         cate = cls(user_id=user.id, name=name)
         session.add(cate)
@@ -96,7 +96,7 @@ class NotesCategory(Base):
         return cate
 
     def dumpToDict(self):
-        d = {}
+        d = dict()
         d["id"] = self.id
         d["name"] = self.name
         d["notes_num"] = self.notes.count()
