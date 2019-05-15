@@ -1,5 +1,4 @@
-from Modules import database as db
-import time
+from amlink.modules import database as db
 
 db.initSession()
 

@@ -1,5 +1,5 @@
-from WeatherModel import ComWeather
 import WeatherModel
+from WeatherModel import ComWeather
 
 city = ComWeather.search("shanghai")
 w = city.getCurrent()  # type: WeatherModel._WeatherCurrent
