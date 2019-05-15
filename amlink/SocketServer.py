@@ -3,6 +3,8 @@ import socket
 import struct
 import threading
 
+import amlink
+
 
 class Request:
     def __init__(self, id, command, arguments):
@@ -83,37 +85,37 @@ class Client:
 
 
 def new_client(network, client, event):
-    # check if event is set (then this client is probably the 'fake' one from stop())
-    if event.is_set():
-        return
+    try:
+        # check if event is set (then this client is probably the 'fake' one from stop())
+        if event.is_set():
+            return
 
-    print('Establishing connection with: {0}:{1}'.format(client.address, client.port))
+        print('Establishing connection with: {0}:{1}'.format(client.address, client.port))
 
-    # "Username,Password"
-    recv = client.recv_pass()
-    recv = recv.split(',')
-    user_name = recv[0]
-    password = recv[1]
+        # "Username,Password"
+        recv = client.recv_pass()
+        recv = recv.split(',')
+        user_name = recv[0]
+        password = recv[1]
 
-    # user_object = amlink.users.get_user(user_name)
-    #
-    # if user_object.checkPassword(password) is False:
-    #     # wrong password, close connection
-    #     c.close()
-    print(user_name, password)
-    client.send('', 0, 'Login: {0}'.format(user_name), {})
+        user_object = amlink.users.get_user(user_name)
 
-    while True:
-        req = client.recv()
-        handle_network(network, req, client.cid, user_name)  # user_object.name)
+        if user_object.checkPassword(password) is False:
+            # wrong password, close connection
+            client.close()
+        client.send('', 0, 'Login: {0}'.format(user_name), {})
 
-    # except socket.error as error:
-    #     print('Socket error from {0}: {1]'.format(c.address, error))
-    # except Exception as error:
-    #     print('Unexpected exception from {0}: {1}'.format(c.address, error))
-    # finally:
-    #     print('Closing connection with {0}:{1}'.format(c.address, c.port))
-    #     c.close()
+        while True:
+            req = client.recv()
+            handle_network(network, req, client.cid, user_name)  # user_object.name)
+
+    except socket.error as error:
+        print('Socket error from {0}: {1]'.format(client.address, error))
+    except Exception as error:
+        print('Unexpected exception from {0}: {1}'.format(client.address, error))
+    finally:
+        print('Closing connection with {0}:{1}'.format(client.address, client.port))
+        client.close()
 
 
 def start_server(network, port, local=True, max_clients=10):

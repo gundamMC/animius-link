@@ -27,5 +27,9 @@ def load(path='./config.json'):
             print(e)
 
 
+def get_config():
+    return config
+
+
 if config is None:
     load()

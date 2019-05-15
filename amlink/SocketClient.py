@@ -69,7 +69,6 @@ class Client:
     def recv(self):
         resp = self._recv()
         resp = resp.decode()
-        print(resp)
         resp = Response.initFromResp(resp)
 
         if resp.id == '':
@@ -89,7 +88,6 @@ def create_client_thread(network, ip, port, pwd, sendQueue):
     client.connect(pwd)
 
     sendThread.start()
-    # self.queue.put({'id': 0, 'command': 'getModels', 'arguments': ''})
 
     while True:
         resp = client.recv()
@@ -103,7 +101,6 @@ def send_queue(client, queue):
     while True:
         if not queue.empty():
             result = queue.get()
-            print(result, 'queue')
             client.send(result['id'], result['command'], result['arguments'])
             queue.task_done()
 
