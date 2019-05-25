@@ -14,11 +14,11 @@ def checkDatabase(*tables):
         dbs = DBSession()
         for t in tables:
             dbs.query(t).first()
-        return (True, 0, "")
+        return True, 0, ""
     except ProgrammingError as err:
-        return (False, err.code, err.orig)
+        return False, err.code, err.orig
     except:
-        return (False, -1, "")
+        return False, -1, ""
 
 
 def initSession():

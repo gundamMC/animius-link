@@ -1,6 +1,6 @@
 import json
 
-from amlink import module_controller, SocketClient, SocketServer, config
+from amlink import module_controller, SocketClient, SocketServer, config, utils
 
 
 class Network:
@@ -15,6 +15,9 @@ class Network:
         self.serverThread, self.clients = SocketServer.start_server(self, self.socket_port, True)
         self.clientThread, self.clientSendQueue = SocketClient.start_client(self, self.ip, self.engine_port,
                                                                             self.engine_passowrd)
+        self.local_commands = {'amlinkExit': utils.amlink_exit,
+                               'amlinkCheckUpdate': utils.amlink_check_update,
+                               'amlinkCheckInternet': utils.amlink_check_internet}
 
     def toEngine(self, id, cid, username, command, arguments):
         if command == 'waifuPredict':
@@ -22,7 +25,12 @@ class Network:
         else:
             self.id_username[id] = [cid, username, False]
 
-        self.clientSendQueue.put({'id': id, 'command': command, 'arguments': arguments})
+        if command not in self.local_commands:
+            self.clientSendQueue.put({'id': id, 'command': command, 'arguments': arguments})
+        else:
+            result = self.local_commands[command].__call__(id)
+            self.toClient(SocketClient.Response.initFromResp(result))
+            self.id_username.pop(id, None)
 
     def toClient(self, resp):
         id = resp.id
@@ -46,3 +54,4 @@ class Network:
 
             return_value = json.dumps(return_value)
             self.clients[cid].send(id, status, message, return_value)
+            self.id_username.pop(id, None)
