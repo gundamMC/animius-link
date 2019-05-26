@@ -163,4 +163,4 @@ def handle_network(network, req, cid, username):
     arguments = req.arguments
     username = username
 
-    network.toEngine(id, cid, username, command, arguments)
+    network.toEngine(id, cid, username, command, arguments, False)

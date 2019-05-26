@@ -7,18 +7,19 @@ import amlink
 
 class SocketIOServer:
 
-    def __init__(self):
+    def __init__(self, network, port):
 
-        sio = socketio.AsyncServer(async_mode='asgi')
+        self.sio = socketio.AsyncServer(async_mode='asgi')
 
         # wrap with ASGI application
-        app = socketio.ASGIApp(sio)
+        app = socketio.ASGIApp(self.sio)
+
+        self.network = network
 
         class DefaultNamespace(socketio.AsyncNamespace):
 
             # def __init__(self):
             #     super().__init__()
-            #
             #     self.users = []
 
             async def on_connect(self, sid, environ):
@@ -40,14 +41,14 @@ class SocketIOServer:
                 if user is None or not user.checkPassword(data['password']):
                     return 'The username or password is incorrect'
 
-                await sio.save_session(sid, {'username': data['username']})
+                await self.sio.save_session(sid, {'username': data['username']})
                 return True
 
             async def on_register(self, sid, data):
                 if amlink.config['allow_registration']:
                     if 'username' in data and 'password' in data:
                         amlink.users.create_user(data['username'], data['password'])
-                        await sio.save_session(sid, {'username': data['username']})
+                        await self.sio.save_session(sid, {'username': data['username']})
 
                         return True
                     else:
@@ -57,6 +58,10 @@ class SocketIOServer:
 
             # async def on_waifu_list(self, sid, data):
 
-        sio.register_namespace(DefaultNamespace())
+            async def on_message(self, sid, id, command, arguments):
+                with self.sio.session(sid) as session:
+                    self.network.toEngine(id, sid, session['username'], command, arguments, True)
 
-        uvicorn.run(app, host='192.168.0.50', port=5000)
+        self.sio.register_namespace(DefaultNamespace(network))
+
+        uvicorn.run(app, host='127.0.0.1', port=port)
