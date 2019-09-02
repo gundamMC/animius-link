@@ -8,7 +8,7 @@ class Network:
     def __init__(self):
         cfg = config.get_config()
         self.id_username = {}  # Save request id and username
-        self.ip = '192.168.1.105'  # cfg['ip']
+        self.ip = cfg['ip']
         self.socket_port = cfg['socket_port']
         self.socketio_port = cfg['socket.io_port']
         self.engine_port = cfg['engine_port']
