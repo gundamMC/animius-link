@@ -38,7 +38,7 @@ class Client:
 
     def connect(self, pwd):
         self.socket.connect((self.ip, self.port))
-        self._send(pwd)
+        self.send('', 'login', {'pwd': pwd})
 
     def send(self, id, command, arguments):
         req = Request.createReq(id, command, arguments)
@@ -46,6 +46,7 @@ class Client:
         self._send(req)
 
     def _send(self, data):
+        print('socket_send', data)
         data = data.encode('utf-8')
         length = len(data)
         self.socket.sendall(struct.pack('!I', length))
@@ -77,6 +78,7 @@ class Client:
             return resp
 
     def close(self):
+        self.send('', 'logout', {})
         self.socket.close()
 
 
