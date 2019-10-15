@@ -4,10 +4,10 @@ config = {
     'allow_registration': True,
     'register_key': 'some random key',
     'ip': '127.0.0.1',
-    'engine_port': 5002,
+    'engine_port': 5000,
     'engine_password': 'p@ssword',
     'socket_port': 5001,
-    'socket.io_port': 5000
+    'socket.io_port': 5002
 }
 
 
