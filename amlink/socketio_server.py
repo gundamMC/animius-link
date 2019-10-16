@@ -7,61 +7,66 @@ import amlink
 
 class SocketIOServer:
 
-    def __init__(self, network, port):
+    def __init__(self, network):
 
         self.sio = socketio.AsyncServer(async_mode='asgi')
 
         # wrap with ASGI application
-        app = socketio.ASGIApp(self.sio)
+        self.app = socketio.ASGIApp(self.sio)
+
+        # create a Socket.IO server
+        # self.sio = socketio.Server()
+        #
+        # # wrap with a WSGI application
+        # self.app = socketio.WSGIApp(self.sio)
 
         self.network = network
 
-        class DefaultNamespace(socketio.AsyncNamespace):
+        @self.sio.event
+        async def auth(sid, data):
+            print('==========')
+            print(data)
+            print('==========')
 
-            # def __init__(self):
-            #     super().__init__()
-            #     self.users = []
+            if 'username' not in data or 'password' not in data:
+                return False
 
-            async def on_connect(self, sid, environ):
-                print('connected')
+            user = amlink.users.get_user(data['username'])
 
-            async def on_disconnect(self, sid):
-                pass
+            if user is None or not user.checkPassword(data['password']):
+                return 'The username or password is incorrect'
 
-            async def on_auth(self, sid, data):
-                print('==========')
-                print(data)
-                print('==========')
+            await self.sio.save_session(sid, {'username': data['username']})
+            return True
 
-                if 'username' not in data or 'password' not in data:
-                    return False
+        @self.sio.event
+        async def register(sid, data):
+            if amlink.config['allow_registration']:
+                if 'username' in data and 'password' in data:
+                    amlink.users.create_user(data['username'], data['password'])
+                    await self.sio.save_session(sid, {'username': data['username']})
 
-                user = amlink.users.get_user(data['username'])
-
-                if user is None or not user.checkPassword(data['password']):
-                    return 'The username or password is incorrect'
-
-                await self.sio.save_session(sid, {'username': data['username']})
-                return True
-
-            async def on_register(self, sid, data):
-                if amlink.config['allow_registration']:
-                    if 'username' in data and 'password' in data:
-                        amlink.users.create_user(data['username'], data['password'])
-                        await self.sio.save_session(sid, {'username': data['username']})
-
-                        return True
-                    else:
-                        return 'Username and password must be included'
+                    return True
                 else:
-                    return 'Registration is disabled'
+                    return 'Username and password must be included'
+            else:
+                return 'Registration is disabled'
 
-            # async def on_waifu_list(self, sid, data):
+        @self.sio.event
+        async def waifuList(sid, data):
+            session = await self.sio.get_session(sid)
+            self.network.toEngine(data['id'], sid, session['username'], 'getWaifu', {}, 'waifuList')
+            return True
 
-            async def on_message(self, sid, id, command, arguments):
-                with self.sio.session(sid) as session:
-                    self.network.toEngine(id, sid, session['username'], command, arguments, True)
+        @self.sio.event
+        async def message(sid, data):
+            session = await self.sio.get_session(sid)
+            self.network.toEngine(data['id'], sid, session['username'], 'waifuPredict', data['arguments'], True)
 
-        self.sio.register_namespace(DefaultNamespace(network))
+        @self.sio.event
+        async def connect(sid, environ):
+            print('connected!', sid)
 
-        uvicorn.run(app, host='127.0.0.1', port=port)
+    def start(self, host, port):
+        uvicorn.run(self.app, host='192.168.0.50', port=port)
+        # eventlet.wsgi.server(eventlet.listen((host, port)), self.app)
