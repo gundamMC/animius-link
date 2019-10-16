@@ -15,20 +15,20 @@ def DatetimeToUnix(dtime):
     return int(time.mktime(dtime.timetuple()))
 
 
-def amlink_exit(id):
-    return {'id': id, 'status': '', 'message': 'success', 'data': {}}
+def amlink_exit():
+    return '', 'success', {}
 
 
-def amlink_check_update(id):
-    return {'id': id, 'status': '', 'message': 'success', 'data': {}}
+def amlink_check_update():
+    return '', 'success', {}
 
 
-def amlink_check_internet(id):
+def amlink_check_internet():
     conn = http.client.HTTPConnection("www.cloudflare.com", timeout=5)
     try:
         conn.request("HEAD", "/")
         conn.close()
-        return {'id': id, 'status': '', 'message': 'success', 'data': {}}
+        return '', 'success', {}
     except:
         conn.close()
-        return {'id': id, 'status': '', 'message': 'timeout', 'data': {}}
+        return '', 'timeout', {}
