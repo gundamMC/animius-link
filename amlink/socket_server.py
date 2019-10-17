@@ -57,7 +57,7 @@ class ConnectEngine:
         self.socket_server = socket_server
         self.engine_ip = engine_ip
         self.engine_port = engine_port
-        self.pwd = 'p@ssword'
+        self.pwd = pwd
         self.reader = self.writer = None
         asyncio.run(self.connect())
 
