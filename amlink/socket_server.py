@@ -59,7 +59,6 @@ class ConnectEngine:
         self.engine_port = engine_port
         self.pwd = pwd
         self.reader = self.writer = None
-        asyncio.run(self.connect())
 
     async def connect(self):
         self.reader, self.writer = await asyncio.open_connection(self.engine_ip, self.engine_port)
@@ -73,7 +72,7 @@ class ConnectEngine:
                 link_process = self.socket_server.pending_requests[response_id][1]
                 username = self.socket_server.pending_requests[response_id][2]
 
-                if link_process and 'intent' in data.keys and 'ner' in data.keys:
+                if data != {} and link_process and 'intent' in data.keys and 'ner' in data.keys:
                     intent = data['intent']
                     ner = self.parse_ner(data['ner'][0], data['ner'][1])
                     return_value = module_controller.intents[intent].__call__(ner, username)
@@ -125,14 +124,19 @@ class SocketServer:
     def __init__(self, link_port, local, pwd, max_clients, engine_ip, engine_port):
         self.host = '127.0.0.1' if local else '0.0.0.0'
         self.link_port = link_port
+        self.engine_ip = engine_ip
+        self.engine_port = engine_port
         self.pwd = pwd
         self.max_clients = max_clients
-        self.server = None
-        self.engine = ConnectEngine(self, engine_ip, engine_port, pwd)
+        self.engine = self.server = None
         self.pending_requests = {}
 
-    def start_server(self):
         asyncio.run(self.main())
+
+    async def main(self):
+        self.engine = ConnectEngine(self, self.engine_ip, self.engine_port, self.pwd)
+        self.server = await asyncio.start_server(self.handle_connection, self.host, self.link_port)
+        await self.engine.connect()
 
     def stop_server(self):
         self.server._shutdown_request = True
@@ -168,6 +172,3 @@ class SocketServer:
 
         writer.close()
 
-    async def main(self):
-        self.server = await asyncio.start_server(self.handle_connection, self.host, self.link_port)
-        await self.server.serve_forever()
