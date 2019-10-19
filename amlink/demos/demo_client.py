@@ -1,130 +1,66 @@
+import asyncio
 import json
-import queue
-import socket
 import struct
-import threading
+import time
 
 
-class Request:
+class ConnectLink:
+    @staticmethod
+    async def await_write(writer, data):
+        writer.write(struct.pack('!I', len(data)))
+        writer.write(data)
+        await writer.drain()
 
     @staticmethod
-    def createReq(id, command, arguments):
-        req = {"id": id,
-               "command": command,
-               "arguments": arguments
-               }
-        return json.dumps(req)
+    async def await_receive(reader):
+        length_buf = await reader.read(4)
+        length, = struct.unpack('!I', length_buf)
+        return await reader.read(length)
+
+    @staticmethod
+    def create_request(request_id, command, arguments):
+        if request_id is None:
+            request_id = time.time()
+        request = {"id": request_id,
+                   "command": command,
+                   "arguments": arguments
+                   }
+        return json.dumps(request).encode("utf-8")
+
+    @staticmethod
+    def parse_response(response):
+        response = response.decode()
+        data = json.loads(response)
+        print(response)
+        return data["id"], data["status"], data["message"], data["data"]
+
+    def __init__(self, link_ip, link_port, username, pwd):
+        self.link_ip = link_ip
+        self.link_port = link_port
+        self.pwd = pwd
+        self.username = username
+        self.reader = self.writer = None
+        asyncio.run(self.connect())
+
+    async def connect(self):
+        self.reader, self.writer = await asyncio.open_connection(self.link_ip, self.link_port)
+        valid_session, auth_message = await self.send_auth(self.writer)
+
+        while valid_session:
+            raw_response = await self.await_receive(self.reader)
+            response_id, message, status, data = self.parse_response(raw_response)
+
+    async def send_auth(self, writer):
+        auth = self.create_request(None, "login", {"pwd": self.pwd, 'username': self.username})
+        await self.await_write(writer, auth)
+
+        # additional test command
+        await self.send_request(None, 'getWaifu', {})
+        return True, "success"
+
+    async def send_request(self, request_id, command, arguments):
+        request = self.create_request(request_id, command, arguments)
+        await self.await_write(self.writer, request)
 
 
-class Response:
-
-    def __init__(self, id, status, message, data):
-        self.id = id
-        self.status = status
-        self.message = message
-        self.data = data
-
-    @classmethod
-    def initFromResp(cls, resp):
-        respJson = json.loads(resp)
-        return cls(respJson["id"], respJson["status"], respJson["message"], respJson['data'])
-
-
-class Client:
-    def __init__(self, ip, port):
-        if ip:
-            self.ip = ip
-        else:
-            self.ip = 'localhost'
-
-        if port:
-            self.port = port
-
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    def connect(self, pwd):
-        self.socket.connect((self.ip, self.port))
-        self._send(pwd)
-
-    def send(self, id, command, arguments):
-        req = Request.createReq(id, command, arguments)
-        print(req)
-        self._send(req)
-
-    def _send(self, data):
-        data = data.encode('utf-8')
-        length = len(data)
-        self.socket.sendall(struct.pack('!I', length))
-        self.socket.sendall(data)
-
-    def _recvall(self, count):
-        buf = b''
-        while count:
-            newbuf = self.socket.recv(count)
-            if not newbuf:
-                return None
-            buf += newbuf
-            count -= len(newbuf)
-        return buf
-
-    def _recv(self):
-        lengthbuf = self._recvall(4)
-        length, = struct.unpack('!I', lengthbuf)
-        return self._recvall(length)
-
-    def recv(self):
-        try:
-            resp = self._recv()
-            resp = resp.decode()
-            print(resp)
-            resp = Response.initFromResp(resp)
-            return resp
-
-        finally:
-            return None
-
-    def close(self):
-        self.socket.close()
-
-
-def create_client_thread(ip, port, pwd, sendQueue):
-    client = Client(ip, port)
-    queue = sendQueue
-    sendThread = threading.Thread(target=send_queue, args=(client, queue))
-    sendThread.daemon = True
-    client.connect(pwd)
-
-    sendThread.start()
-    # self.queue.put({'id': 0, 'command': 'getModels', 'arguments': ''})
-
-    while True:
-        resp = client.recv()
-        if resp is None or resp is "":
-            continue
-        print('Recv:', resp)
-        # amlink.NetworkHandler.toClient(resp)
-
-
-def send_queue(client, queue):
-    while True:
-        if not queue.empty():
-            result = queue.get()
-            print(result, 'queue')
-            client.send(result['id'], result['command'], result['arguments'])
-            queue.task_done()
-
-
-def start_client(ip, port, pwd):
-    sendQueue = queue.Queue(0)
-    thread = threading.Thread(target=create_client_thread, args=(ip, port, pwd, sendQueue))
-    thread.daemon = True
-    thread.start()
-    return thread, sendQueue
-
-
-thread, sendQueue = start_client('127.0.0.1', 5001, 'xAsiimov,test_password')
-print('Send getWaifus')
-sendQueue.put({'id': '114514', 'command': 'getSystemInfo', 'arguments': ''})
-
-while True:
-    pass
+ConnectLink('127.0.0.1', 5001, 'user1', 'p@ssword')
