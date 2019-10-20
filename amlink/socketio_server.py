@@ -1,26 +1,29 @@
+import asyncio
+import threading
+import time
+
 import socketio
 import uvicorn
 
-# create a Socket.IO server
 import amlink
 
 
 class SocketIOServer:
 
-    def __init__(self, network):
+    def __init__(self):
 
         self.sio = socketio.AsyncServer(async_mode='asgi')
 
         # wrap with ASGI application
         self.app = socketio.ASGIApp(self.sio)
+        self.engine = None
+        self.pending_requests = {}
 
         # create a Socket.IO server
         # self.sio = socketio.Server()
         #
         # # wrap with a WSGI application
         # self.app = socketio.WSGIApp(self.sio)
-
-        self.network = network
 
         @self.sio.event
         async def auth(sid, data):
@@ -53,20 +56,26 @@ class SocketIOServer:
                 return 'Registration is disabled'
 
         @self.sio.event
-        async def waifuList(sid, data):
+        async def waifu_list(sid, data):
             session = await self.sio.get_session(sid)
-            self.network.toEngine(data['id'], sid, session['username'], 'getWaifu', {}, 'waifuList')
+            self.pending_requests[data['id']] = [sid, True, session['username']]
+            await self.engine.send_request(time.time(), 'getWaifu', {}, False)
             return True
 
         @self.sio.event
         async def message(sid, data):
             session = await self.sio.get_session(sid)
-            self.network.toEngine(data['id'], sid, session['username'], 'waifuPredict', data['arguments'], True)
+            self.pending_requests[data['id']] = [sid, True, session['username']]
+            await self.engine.send_request(time.time(), 'waifuPredict', data['arguments'], True)
 
         @self.sio.event
         async def connect(sid, environ):
             print('connected!', sid)
 
-    def start(self, host, port):
-        uvicorn.run(self.app, host='192.168.0.50', port=port)
+    def start(self, host, port, engine_ip, engine_port, pwd):
+        self.engine = amlink.connect_engine.Connect(engine_ip, engine_port, pwd, self, True)
+        engine_thread = threading.Thread(target=asyncio.run, args=(self.engine.connect(),), daemon=True)
+        engine_thread.start()
+        uvicorn.run(self.app, host=host, port=port)
+
         # eventlet.wsgi.server(eventlet.listen((host, port)), self.app)
